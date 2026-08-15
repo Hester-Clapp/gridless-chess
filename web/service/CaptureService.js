@@ -41,6 +41,16 @@ export class CaptureService {
         return { king, threats }
     }
 
+    // The colour that's won by capturing the enemy king, or null if both
+    // kings are still on the board. Read straight off the board - via
+    // Board.getKing() - rather than tracked separately, so this stays
+    // correct no matter how a king came to be gone.
+    getWinner(board) {
+        if (!board.getKing(true)) return false
+        if (!board.getKing(false)) return true
+        return null
+    }
+
     // Enemy pieces that could capture `piece` right now, i.e. whose legal
     // moves reach within capture distance of its square. Used to detect
     // check by calling with a king as `piece`.

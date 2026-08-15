@@ -1,9 +1,5 @@
 import { RADIUS } from "../entity/geometry/constants.js"
 
-// How close the mouse has to stay to the piece's own square for a drag to
-// count as "didn't really move" - keeps an unsteady click from reading as
-// an aborted micro-move. Tied to the piece's own click-radius since that's
-// already the notion of "on this square" used elsewhere in this file.
 const DRAG_DEAD_ZONE = RADIUS
 
 export class MovementController {
@@ -15,26 +11,14 @@ export class MovementController {
     statusDisplay
     moveService
     captureService
+    promotionService
+
     selectedPiece = null
-
-    // The piece's legal-move lines, captured once at the start of a drag.
-    // Recomputing them mid-drag would be wrong: they're anchored to the
-    // piece's real position, which doesn't change until the move commits,
-    // so there's nothing to invalidate them until then. null when no drag
-    // is in progress.
     dragLines = null
-
-    // The enemy piece the current drag would capture if dropped where it
-    // currently sits, or null. Recomputed on every drag move so the render
-    // highlight always matches the live drag position.
     captureTarget = null
-
-    // The piece whose move most recently landed, or null before either side
-    // has moved. Highlighted on redraw so a player can see what their
-    // opponent just did.
     lastMovedPiece = null
 
-    constructor(game, renderer, canvas, ctx, statusDisplay, moveService, captureService) {
+    constructor(game, renderer, canvas, ctx, statusDisplay, moveService, captureService, promotionService) {
         this.game = game
         this.board = game.board
         this.renderer = renderer
@@ -43,10 +27,9 @@ export class MovementController {
         this.statusDisplay = statusDisplay
         this.moveService = moveService
         this.captureService = captureService
+        this.promotionService = promotionService
 
         this.canvas.addEventListener("pointerdown", event => this.onMouseDown(event))
-        // Listened for on the window, not the canvas, so a drag that ends
-        // outside the canvas bounds still resolves instead of getting stuck.
         window.addEventListener("pointermove", event => this.onMouseMove(event))
         window.addEventListener("pointerup", event => this.onMouseUp(event))
 
@@ -57,17 +40,9 @@ export class MovementController {
         const point = this.toBoardPoint(event)
         const piece = this.findPieceAt(point)
 
-        // Clicking the already-selected piece (or empty space) deselects
-        // it, rather than leaving its moves stuck on screen. A piece whose
-        // colour isn't on the move is treated the same as empty space -
-        // there's nothing legal to do with it yet.
         this.selectedPiece = piece && piece !== this.selectedPiece && this.game.isTurn(piece) ? piece : null
 
         this.dragLines = this.selectedPiece
-            // Zero-length lines (a direction that's entirely obstructed)
-            // are dropped here: Line.distanceTo() collapses to a constant
-            // 0 for those, which would make them look like the closest
-            // line to any mouse position and hijack the drag.
             ? this.moveService.calculateMoves(this.selectedPiece).filter(line => line !== undefined && line.length > 0)
             : null
         this.captureTarget = null
@@ -80,7 +55,7 @@ export class MovementController {
 
         const point = this.toBoardPoint(event)
         this.selectedPiece.dragPosition = this.withinDeadZone(point, event.shiftKey)
-            ? null // Snap back to the real square rather than micro-jitter along a line.
+            ? null
             : this.closestPointOnLines(point)
 
         this.captureTarget = this.selectedPiece.dragPosition
@@ -96,24 +71,20 @@ export class MovementController {
         const point = this.toBoardPoint(event)
         const destination = this.closestPointOnLines(point)
 
-        // Judge the dead zone by where the cursor actually is, not by the
-        // point it snapped to - a move line's `from` end isn't guaranteed
-        // to sit on the piece's own square (e.g. the knight's minDistance),
-        // so snapping there can put `destination` outside the dead zone
-        // even when the drop was right back on the piece.
         if (destination && !this.withinDeadZone(point, event.shiftKey)) {
             this.selectedPiece.position = destination
             this.selectedPiece.hasMoved = true
             this.captureService.resolveCaptures(this.board, this.selectedPiece)
-            // The move (and any capture it caused) can change what's legal
-            // for every piece on the board, not just this one, so drop the
-            // cached calculateMoves() result rather than trying to reason
-            // about which pieces are affected.
+            this.selectedPiece = this.promotionService.resolvePromotion(this.board, this.selectedPiece)
             this.moveService.invalidateCache()
             this.lastMovedPiece = this.selectedPiece
-            // Only a move that actually lands (as opposed to an
-            // aborted drag, handled below) hands the turn over.
-            this.game.advanceTurn()
+
+            const winner = this.captureService.getWinner(this.board)
+            if (winner !== null) {
+                this.game.declareWinner(winner)
+            } else {
+                this.game.advanceTurn()
+            }
         }
 
         this.selectedPiece.dragPosition = null
@@ -124,9 +95,6 @@ export class MovementController {
         this.redraw()
     }
 
-    // Distance from the piece's own (undragged) square, in board pixels.
-    // Holding shift disables the dead zone entirely, for players who want
-    // every drag to register immediately.
     withinDeadZone(point, shiftHeld) {
         if (shiftHeld) return false
 
@@ -136,8 +104,6 @@ export class MovementController {
         return dx * dx + dy * dy <= DRAG_DEAD_ZONE * DRAG_DEAD_ZONE
     }
 
-    // The point on any of the piece's legal-move lines closest to `point`,
-    // or null if the piece has no legal moves to snap to.
     closestPointOnLines(point) {
         let closest = null
         let closestDistance = Infinity
@@ -151,13 +117,6 @@ export class MovementController {
         return closest
     }
 
-    // Click coordinates arrive in CSS pixels relative to the viewport, but
-    // piece positions are in canvas pixels, so this maps one to the other -
-    // accounting for the canvas being scaled/resized by CSS. Also undoes the
-    // 180° rotation the renderer applies when it's black's turn, so a click
-    // still lands on whatever's drawn under the cursor - the result is
-    // still a real board coordinate, so nothing downstream needs to know
-    // the board was ever flipped.
     toBoardPoint(event) {
         const rect = this.canvas.getBoundingClientRect()
         const scaleX = this.canvas.width / rect.width
@@ -171,8 +130,6 @@ export class MovementController {
             : point
     }
 
-    // Black's turn is drawn rotated 180° so whoever's on move has their own
-    // pieces at the bottom of the screen.
     isFlipped() {
         return !this.game.whiteToMove
     }
@@ -187,7 +144,6 @@ export class MovementController {
 
     redraw() {
         const checkStatus = this.captureService.getCheckStatus(this.board, this.game.whiteToMove)
-
         const flipped = this.isFlipped()
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)

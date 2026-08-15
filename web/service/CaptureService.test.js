@@ -6,8 +6,14 @@ const makePiece = (x, y, white) => ({ position: { x, y }, white })
 
 // A board-shaped stub with real (mutable) pieces.white/black arrays, since
 // resolveCaptures() splices the enemy list directly rather than going
-// through getEnemyPieces() (which hands back a copy).
-const makeBoard = (white = [], black = []) => ({ pieces: { white, black } })
+// through getEnemyPieces() (which hands back a copy). getKing() mirrors
+// Board's real implementation, since getWinner() depends on it.
+const makeBoard = (white = [], black = []) => ({
+    pieces: { white, black },
+    getKing(isWhite) {
+        return (isWhite ? white : black).find(piece => piece.type === "king")
+    }
+})
 
 Deno.test("resolveCaptures() removes an overlapping enemy piece from the board", () => {
     const mover = makePiece(0, 0, true)
@@ -64,6 +70,33 @@ Deno.test("resolveCaptures() only captures the closest of multiple overlapping e
 
     assertEquals(captured, victimA)
     assertEquals(board.pieces.black, [victimB])
+})
+
+Deno.test("getWinner() is null while both kings are on the board", () => {
+    const board = makeBoard(
+        [{ ...makePiece(0, 0, true), type: "king" }],
+        [{ ...makePiece(4, 4, false), type: "king" }]
+    )
+
+    assertEquals(new CaptureService().getWinner(board), null)
+})
+
+Deno.test("getWinner() is true (white) once black's king is gone", () => {
+    const board = makeBoard(
+        [{ ...makePiece(0, 0, true), type: "king" }],
+        []
+    )
+
+    assertStrictEquals(new CaptureService().getWinner(board), true)
+})
+
+Deno.test("getWinner() is false (black) once white's king is gone", () => {
+    const board = makeBoard(
+        [],
+        [{ ...makePiece(4, 4, false), type: "king" }]
+    )
+
+    assertStrictEquals(new CaptureService().getWinner(board), false)
 })
 
 Deno.test("intersects() is false exactly at the combined-radius boundary and true just beyond it", () => {

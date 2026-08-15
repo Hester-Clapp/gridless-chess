@@ -32,3 +32,37 @@ Deno.test("advanceTurn() toggles back on a second call", () => {
 
     assertStrictEquals(game.whiteToMove, true)
 })
+
+Deno.test("a new game has no winner and isn't over", () => {
+    const game = new Game({})
+
+    assertStrictEquals(game.winner, null)
+    assertStrictEquals(game.isOver, false)
+})
+
+Deno.test("declareWinner() records the winning colour and ends the game", () => {
+    const game = new Game({})
+
+    game.declareWinner(true)
+
+    assertStrictEquals(game.winner, true)
+    assertStrictEquals(game.isOver, true)
+})
+
+Deno.test("declareWinner() supports black winning too", () => {
+    const game = new Game({})
+
+    game.declareWinner(false)
+
+    assertStrictEquals(game.winner, false)
+    assertStrictEquals(game.isOver, true)
+})
+
+Deno.test("isTurn() is false for either colour once the game is over", () => {
+    const game = new Game({})
+
+    game.declareWinner(true)
+
+    assertStrictEquals(game.isTurn(makePiece(true)), false)
+    assertStrictEquals(game.isTurn(makePiece(false)), false)
+})

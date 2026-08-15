@@ -1,4 +1,5 @@
 import { SPACE, HALF_SPACE } from "./geometry/constants.js"
+import { Queen } from "./Piece.js"
 
 export class Board {
     width
