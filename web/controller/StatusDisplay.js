@@ -8,8 +8,8 @@ export class StatusDisplay {
         this.element = element
     }
 
-    // `checkStatus` is whatever Game.getCheckStatus() returned for the
-    // player currently on the move.
+    // `checkStatus` is whatever CaptureService.getCheckStatus() returned
+    // for the player currently on the move.
     update(game, checkStatus) {
         const colour = game.whiteToMove ? "White" : "Black"
         const inCheck = checkStatus.threats.length > 0

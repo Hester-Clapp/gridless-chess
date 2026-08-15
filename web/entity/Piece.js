@@ -22,10 +22,6 @@ export class Piece {
     get renderPosition() {
         return this.dragPosition ?? this.position
     }
-
-    get assetName() {
-        return `${this.type}-${this.white ? "w" : "b"}.svg`
-    }
 }
 
 export class Pawn extends Piece {
@@ -44,7 +40,7 @@ export class Pawn extends Piece {
 export class Knight extends Piece {
     constructor(x, y, white) {
         super(x, y, white)
-        this.moveSet = new MoveSet(0.5 * SPACE, SPACE, [ // Roughly \sqrt{5}
+        this.moveSet = new MoveSet(0.8 * SPACE, SPACE, [ // Roughly \sqrt{5}
             new Vector(2, 1),
             new Vector(1, 2),
             new Vector(-1, 2),

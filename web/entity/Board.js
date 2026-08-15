@@ -1,6 +1,4 @@
 import { SPACE, HALF_SPACE } from "./geometry/constants.js"
-import { Pawn, Knight, Bishop, Rook, Queen, King } from "./Piece.js"
-import { ObstructionCalculator } from "../service/ObstructionCalculator.js"
 
 export class Board {
     width
@@ -9,13 +7,10 @@ export class Board {
         white: [],
         black: []
     }
-    moveCache = null
-    obstructionCalculator
 
     constructor() {
         this.width = 8 * SPACE
         this.height = 8 * SPACE
-        this.obstructionCalculator = new ObstructionCalculator(this)
     }
 
     addPiece(Type, x, y) {
@@ -23,18 +18,6 @@ export class Board {
         const blackPiece = new Type(x * SPACE + HALF_SPACE, y * SPACE + HALF_SPACE, false)
         this.pieces.white.push(whitePiece)
         this.pieces.black.push(blackPiece)
-    }
-
-    setUp() {
-        this.addPiece(Rook, 0, 0)
-        this.addPiece(Knight, 1, 0)
-        this.addPiece(Bishop, 2, 0)
-        this.addPiece(Queen, 3, 0)
-        this.addPiece(King, 4, 0)
-        this.addPiece(Bishop, 5, 0)
-        this.addPiece(Knight, 6, 0)
-        this.addPiece(Rook, 7, 0)
-        for (let i = 0; i < 8; i++) this.addPiece(Pawn, i, 1)
     }
 
     // All pieces, both colours, for callers like the Renderer that don't
@@ -61,19 +44,5 @@ export class Board {
     // captured king just falls out of pieces.white/black like anything else).
     getKing(white) {
         return (white ? this.pieces.white : this.pieces.black).find(piece => piece.type === "king")
-    }
-
-    calculateMoves(piece) {
-        if (this.moveCache && this.moveCache.piece === piece) {
-            return this.moveCache.moves
-        }
-
-        const moves = this.obstructionCalculator.calculateMoves(piece).filter(line => line !== undefined)
-        this.moveCache = { piece, moves }
-        return moves
-    }
-
-    invalidateMoveCache() {
-        this.moveCache = null
     }
 }

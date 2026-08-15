@@ -1,5 +1,4 @@
 import { RADIUS } from "../entity/geometry/constants.js"
-import { CaptureService } from "../service/CaptureService.js"
 
 // How close the mouse has to stay to the piece's own square for a drag to
 // count as "didn't really move" - keeps an unsteady click from reading as
@@ -14,8 +13,9 @@ export class MovementController {
     canvas
     ctx
     statusDisplay
+    moveService
+    captureService
     selectedPiece = null
-    captureService = new CaptureService()
 
     // The piece's legal-move lines, captured once at the start of a drag.
     // Recomputing them mid-drag would be wrong: they're anchored to the
@@ -34,13 +34,15 @@ export class MovementController {
     // opponent just did.
     lastMovedPiece = null
 
-    constructor(game, renderer, canvas, ctx, statusDisplay) {
+    constructor(game, renderer, canvas, ctx, statusDisplay, moveService, captureService) {
         this.game = game
         this.board = game.board
         this.renderer = renderer
         this.canvas = canvas
         this.ctx = ctx
         this.statusDisplay = statusDisplay
+        this.moveService = moveService
+        this.captureService = captureService
 
         this.canvas.addEventListener("pointerdown", event => this.onMouseDown(event))
         // Listened for on the window, not the canvas, so a drag that ends
@@ -66,7 +68,7 @@ export class MovementController {
             // are dropped here: Line.distanceTo() collapses to a constant
             // 0 for those, which would make them look like the closest
             // line to any mouse position and hijack the drag.
-            ? this.board.calculateMoves(this.selectedPiece).filter(line => line !== undefined && line.length > 0)
+            ? this.moveService.calculateMoves(this.selectedPiece).filter(line => line !== undefined && line.length > 0)
             : null
         this.captureTarget = null
 
@@ -107,7 +109,7 @@ export class MovementController {
             // for every piece on the board, not just this one, so drop the
             // cached calculateMoves() result rather than trying to reason
             // about which pieces are affected.
-            this.board.invalidateMoveCache()
+            this.moveService.invalidateCache()
             this.lastMovedPiece = this.selectedPiece
             // Only a move that actually lands (as opposed to an
             // aborted drag, handled below) hands the turn over.
@@ -184,7 +186,7 @@ export class MovementController {
     }
 
     redraw() {
-        const checkStatus = this.game.getCheckStatus()
+        const checkStatus = this.captureService.getCheckStatus(this.board, this.game.whiteToMove)
 
         const flipped = this.isFlipped()
 

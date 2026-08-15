@@ -3,10 +3,10 @@ import { Line } from "../entity/geometry/Line.js"
 import { Vector } from "../entity/geometry/Vector.js"
 import { RADIUS } from "../entity/geometry/constants.js"
 import { MoveSet } from "../entity/MoveSet.js"
-import { ObstructionCalculator } from "./ObstructionCalculator.js"
+import { MoveCalculator } from "./MoveCalculator.js"
 import { Pawn } from "../entity/Piece.js"
 
-// ObstructionCalculator derives its playable area from board.width/board.height
+// MoveCalculator derives its playable area from board.width/board.height
 // in the constructor, so every instance needs a board-shaped object rather
 // than null. makeBoard() also stubs the friendly/enemy lookups that
 // calculateMoves() relies on.
@@ -35,7 +35,7 @@ const makePawn = (x, y, white, hasMoved) => ({
 // rectangles without needing a differently-sized board per case.
 
 Deno.test("clamp() returns the same line when fully inside the rectangle", () => {
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: 0, y: 0 }, bottomRight: { x: 10, y: 10 } }
 
     const line = new Line({ x: 1, y: 1 }, { x: 5, y: 1 })
@@ -44,7 +44,7 @@ Deno.test("clamp() returns the same line when fully inside the rectangle", () =>
 })
 
 Deno.test("clamp() returns undefined when fully outside the rectangle", () => {
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: 0, y: -100 }, bottomRight: { x: 10, y: 100 } }
 
     const line = new Line({ x: 20, y: 0 }, { x: 30, y: 0 })
@@ -53,7 +53,7 @@ Deno.test("clamp() returns undefined when fully outside the rectangle", () => {
 })
 
 Deno.test("clamp() returns undefined when a horizontal line lies entirely outside a parallel boundary", () => {
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: -100, y: -10 }, bottomRight: { x: 100, y: 10 } }
 
     const line = new Line({ x: 0, y: -50 }, { x: 5, y: -50 })
@@ -62,7 +62,7 @@ Deno.test("clamp() returns undefined when a horizontal line lies entirely outsid
 })
 
 Deno.test("clamp() clips a line that exits through one side", () => {
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: 0, y: -100 }, bottomRight: { x: 10, y: 100 } }
 
     const line = new Line({ x: -5, y: 0 }, { x: 5, y: 0 })
@@ -75,7 +75,7 @@ Deno.test("clamp() clips a line that exits through one side", () => {
 
 Deno.test("clamp() clips a diagonal line against all four sides", () => {
     // Line from (-10, -10) to (10, 10) clamped to the box [-1, 1] x [-1, 1].
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: -1, y: -1 }, bottomRight: { x: 1, y: 1 } }
 
     const line = new Line({ x: -10, y: -10 }, { x: 10, y: 10 })
@@ -87,7 +87,7 @@ Deno.test("clamp() clips a diagonal line against all four sides", () => {
 })
 
 Deno.test("clamp() touching the boundary exactly is kept, not dropped", () => {
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: 0, y: 0 }, bottomRight: { x: 10, y: 10 } }
 
     const line = new Line({ x: 0, y: 0 }, { x: 10, y: 0 })
@@ -98,7 +98,7 @@ Deno.test("clamp() touching the boundary exactly is kept, not dropped", () => {
 Deno.test("clamp() collapses to a point without dropping it when the point is inside the rectangle", () => {
     // A zero-length line (from === to) is what calculateMoves() passes
     // through when a friendly piece obstructs a move at its very start.
-    const calculator = new ObstructionCalculator(makeBoard())
+    const calculator = new MoveCalculator(makeBoard())
     calculator.playableArea = { topLeft: { x: 0, y: 0 }, bottomRight: { x: 10, y: 10 } }
 
     const point = { x: 5, y: 5 }
@@ -113,7 +113,7 @@ Deno.test("clamp() collapses to a point without dropping it when the point is in
 
 Deno.test("calculateMoves() clamps to the board when there are no other pieces", () => {
     const board = makeBoard({ width: 1000, height: 1000 })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(900, 500, true, new MoveSet(0, 200, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -128,7 +128,7 @@ Deno.test("calculateMoves() leaves moves untouched when no pieces are within rea
         height: 5000,
         friendlies: [makePiece(500 + 2000, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     // reach = maxDistance + RADIUS * 2 = 1128; the friendly is 2000 away.
@@ -143,7 +143,7 @@ Deno.test("calculateMoves() trims a move short when a friendly piece blocks it",
         height: 5000,
         friendlies: [makePiece(800, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -157,7 +157,7 @@ Deno.test("calculateMoves() extends a move onto an enemy piece's square so it ca
         height: 5000,
         enemies: [makePiece(800, 500, false, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -174,7 +174,7 @@ Deno.test("calculateMoves() only applies the nearest friendly obstruction on a d
             makePiece(650, 500, true, null), // nearer, should win
         ],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -191,7 +191,7 @@ Deno.test("calculateMoves() stops immediately, skipping enemy checks, when a fri
         friendlies: [makePiece(628, 500, true, null)],
         enemies: [makePiece(900, 500, false, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -205,7 +205,7 @@ Deno.test("calculateMoves() handles each direction of a multi-directional move s
         height: 5000,
         friendlies: [makePiece(800, 500, true, null)], // only obstructs the +x direction
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0), new Vector(-1, 0)]))
 
     const [blocked, clear] = calculator.calculateMoves(piece)
@@ -227,7 +227,7 @@ Deno.test("calculateMoves() lets a jumping piece land on either side of a blocki
         height: 5000,
         friendlies: [makePiece(800, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [nearSide, farSide] = calculator.calculateMoves(piece)
@@ -243,7 +243,7 @@ Deno.test("calculateMoves() lets a jumping piece land beyond an enemy piece it c
         height: 5000,
         enemies: [makePiece(800, 500, false, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [capture, beyond] = calculator.calculateMoves(piece)
@@ -260,7 +260,7 @@ Deno.test("calculateMoves() still lets a jumping piece capture a lone enemy even
         height: 5000,
         enemies: [makePiece(800, 500, false, null), makePiece(1000, 500, false, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [capture, beyond] = calculator.calculateMoves(piece)
@@ -281,7 +281,7 @@ Deno.test("calculateMoves() clears two friendly pieces close enough together tha
             makePiece(780, 500, true, null),
         ],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [nearSide, farSide] = calculator.calculateMoves(piece)
@@ -293,7 +293,7 @@ Deno.test("calculateMoves() clears two friendly pieces close enough together tha
 
 Deno.test("calculateMoves() lets a pawn that hasn't moved yet advance two squares straight ahead", () => {
     const board = makeBoard({ width: 5000, height: 5000 })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const pawn = makePawn(500, 500, true, false)
 
     const [move] = calculator.calculateMoves(pawn)
@@ -303,7 +303,7 @@ Deno.test("calculateMoves() lets a pawn that hasn't moved yet advance two square
 
 Deno.test("calculateMoves() only lets a pawn that has already moved advance one square straight ahead", () => {
     const board = makeBoard({ width: 5000, height: 5000 })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const pawn = makePawn(500, 500, true, true)
 
     const [move] = calculator.calculateMoves(pawn)
@@ -320,7 +320,7 @@ Deno.test("calculateMoves() blocks a pawn's double step short when a piece sits 
         height: 5000,
         friendlies: [makePiece(680, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const pawn = makePawn(500, 500, true, false)
 
     const [move] = calculator.calculateMoves(pawn)
@@ -336,7 +336,7 @@ Deno.test("calculateMoves() never extends a pawn's diagonal capture past one squ
         // diagonal (wrongly) got the same doubling as the straight line.
         enemies: [makePiece(500 + Math.cos(Math.PI / 4) * 200, 500 + Math.sin(Math.PI / 4) * 200, false, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const pawn = makePawn(500, 500, true, false)
 
     const [diagonal] = calculator.calculateMoves(pawn)
@@ -359,7 +359,7 @@ Deno.test("calculateMoves() blocks entirely, without reaching backward, when a n
         height: 5000,
         friendlies: [makePiece(520, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
@@ -373,7 +373,7 @@ Deno.test("calculateMoves() resumes a jumping piece's line at the obstruction's 
         height: 5000,
         friendlies: [makePiece(520, 500, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [nearSide, farSide] = calculator.calculateMoves(piece)
@@ -394,7 +394,7 @@ Deno.test("calculateMoves() does not throw when a jump's line clips entirely off
         // heading toward it.
         friendlies: [makePiece(RADIUS + 50, RADIUS + 50, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     // A knight-shaped move (minDistance 0.5 * SPACE) starting at the
     // playable area's top-left corner: the (-2, -1) jump's `from` point is
     // already off the board, so the whole line clips to undefined.
@@ -424,7 +424,7 @@ Deno.test("calculateMoves() blocks a knight-shaped jump on a friendly piece sitt
         // direction vector's length (sqrt(5) for a (2, 1) knight jump).
         friendlies: [makePiece(700, 600, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const knight = makePiece(500, 500, true, new MoveSet(50, 100, [new Vector(2, 1)], true))
 
     const [move] = calculator.calculateMoves(knight)
@@ -444,7 +444,7 @@ Deno.test("calculateMoves() blocks a knight-shaped jump on a friendly piece over
         height: 5000,
         friendlies: [makePiece(657.2433402239947, 578.6216701119973, true, null)],
     })
-    const calculator = new ObstructionCalculator(board)
+    const calculator = new MoveCalculator(board)
     const knight = makePiece(500, 500, true, new MoveSet(50, 100, [new Vector(2, 1)], true))
 
     const [move] = calculator.calculateMoves(knight)

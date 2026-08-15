@@ -4,14 +4,20 @@ import { Vector } from "../entity/geometry/Vector.js"
 // Two pieces are treated as occupying the same spot - and so capturing one
 // another - once their circles overlap, i.e. the distance between their
 // centres is less than the sum of their radii. Matches the obstruction
-// radius ObstructionCalculator already uses to decide what's capturable.
+// radius MoveCalculator already uses to decide what's capturable.
 const CAPTURE_DISTANCE = RADIUS * 2
 
 export class CaptureService {
+    moveService
+
+    constructor(moveService) {
+        this.moveService = moveService
+    }
+
     // Removes any enemy piece whose square `piece` now intersects from the
     // board. Called after a move commits - capture is a consequence of
     // where a piece ends up, not a rule about where it's allowed to go
-    // (that's ObstructionCalculator's job, before the move happens).
+    // (that's MoveCalculator's job, before the move happens).
     resolveCaptures(board, piece) {
         const enemyList = piece.white ? board.pieces.black : board.pieces.white
         const captured = this.findCaptureAt(board, piece)
@@ -24,12 +30,23 @@ export class CaptureService {
         return captured
     }
 
+    // The king belonging to `white`, plus whichever enemy pieces currently
+    // threaten it. `threats` is empty (and only then) when that player
+    // isn't in check - that's what "in check" means here. Deciding this
+    // means walking every enemy piece's legal moves, which is calculation
+    // Game shouldn't have to own.
+    getCheckStatus(board, white) {
+        const king = board.getKing(white)
+        const threats = king ? this.findThreateningPieces(board, king) : []
+        return { king, threats }
+    }
+
     // Enemy pieces that could capture `piece` right now, i.e. whose legal
     // moves reach within capture distance of its square. Used to detect
     // check by calling with a king as `piece`.
     findThreateningPieces(board, piece) {
         return board.getEnemyPieces(piece).filter(enemy =>
-            board.calculateMoves(enemy).some(line =>
+            this.moveService.calculateMoves(enemy).some(line =>
                 this.intersectsPoint(line.closestPoint(piece.position), piece)
             )
         )

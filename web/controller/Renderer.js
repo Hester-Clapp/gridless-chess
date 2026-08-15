@@ -9,6 +9,11 @@ const ASSET_DIR = new URL("../assets/", import.meta.url)
 
 export class Renderer {
     images = new Map()
+    moveService
+
+    constructor(moveService) {
+        this.moveService = moveService
+    }
 
     renderBoard(board, ctx, captureTarget = null, checkStatus = { king: null, threats: [] }, flipped = false, lastMovedPiece = null) {
         this.drawPieces(board, ctx, captureTarget, checkStatus, flipped, lastMovedPiece)
@@ -27,7 +32,7 @@ export class Renderer {
     }
 
     drawPiece(piece, ctx, highlight = null, board = null, flipped = false) {
-        const image = this.getImage(piece.assetName)
+        const image = this.getImage(this.assetNameFor(piece))
 
         const draw = () => {
             const { x, y } = this.toDisplayPoint(piece.renderPosition, board, flipped)
@@ -60,7 +65,7 @@ export class Renderer {
     drawMoves(board, piece, ctx, flipped = false) {
         this.drawPiece(piece, ctx, "selected", board, flipped)
 
-        const moves = board.calculateMoves(piece)
+        const moves = this.moveService.calculateMoves(piece)
 
         ctx.save()
         ctx.strokeStyle = MOVE_LINE_COLOUR
@@ -81,6 +86,10 @@ export class Renderer {
         return flipped
             ? { x: board.width - point.x, y: board.height - point.y }
             : point
+    }
+
+    assetNameFor(piece) {
+        return `${piece.type}-${piece.white ? "w" : "b"}.svg`
     }
 
     getImage(name) {
