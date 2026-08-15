@@ -94,7 +94,12 @@ export class MovementController {
         const point = this.toBoardPoint(event)
         const destination = this.closestPointOnLines(point)
 
-        if (destination && !this.withinDeadZone(destination, event.shiftKey)) {
+        // Judge the dead zone by where the cursor actually is, not by the
+        // point it snapped to - a move line's `from` end isn't guaranteed
+        // to sit on the piece's own square (e.g. the knight's minDistance),
+        // so snapping there can put `destination` outside the dead zone
+        // even when the drop was right back on the piece.
+        if (destination && !this.withinDeadZone(point, event.shiftKey)) {
             this.selectedPiece.position = destination
             this.selectedPiece.hasMoved = true
             this.captureService.resolveCaptures(this.board, this.selectedPiece)

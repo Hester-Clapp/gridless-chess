@@ -1,21 +1,22 @@
-import { Vector } from "./geometry/Vector.js"
 import { Line } from "./geometry/Line.js"
-import { SPACE, QUARTER_PI, HALF_PI, PI } from "./geometry/constants.js"
 
 export class MoveSet {
+    minDistance
     maxDistance
     directions = []
     canJump
 
-    constructor(maxDistance, directions, canJump = false) {
+    constructor(minDistance, maxDistance, directions, canJump = false) {
+        this.minDistance = minDistance
         this.maxDistance = maxDistance
         this.directions = [...directions]
         this.canJump = canJump
     }
 
-    createLines(from) {
-        return this.directions.map(angle => {
-            const to = Vector.fromAngle(this.maxDistance, angle).translate(from)
+    createLines(origin) {
+        return this.directions.map(vector => {
+            const from = vector.times(this.minDistance).translate(origin)
+            const to = vector.times(this.maxDistance).translate(origin)
             return new Line(from, to)
         })
     }

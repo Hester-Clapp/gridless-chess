@@ -1,8 +1,10 @@
 import { assertEquals, assertAlmostEquals, assertStrictEquals, assertThrows } from "@std/assert"
 import { Line } from "../entity/geometry/Line.js"
+import { Vector } from "../entity/geometry/Vector.js"
 import { RADIUS } from "../entity/geometry/constants.js"
 import { MoveSet } from "../entity/MoveSet.js"
 import { ObstructionCalculator } from "./ObstructionCalculator.js"
+import { Pawn } from "../entity/Piece.js"
 
 // ObstructionCalculator derives its playable area from board.width/board.height
 // in the constructor, so every instance needs a board-shaped object rather
@@ -21,7 +23,7 @@ const makePawn = (x, y, white, hasMoved) => ({
     white,
     type: "pawn",
     hasMoved,
-    moveSet: new MoveSet(100, [Math.PI / 4, 0, -Math.PI / 4]),
+    moveSet: new MoveSet(0, 100, [new Vector(1, 1), new Vector(1, 0), new Vector(1, -1)]),
 })
 
 // ---------------------------------------------------------------------------
@@ -112,7 +114,7 @@ Deno.test("clamp() collapses to a point without dropping it when the point is in
 Deno.test("calculateMoves() clamps to the board when there are no other pieces", () => {
     const board = makeBoard({ width: 1000, height: 1000 })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(900, 500, true, new MoveSet(200, [0]))
+    const piece = makePiece(900, 500, true, new MoveSet(0, 200, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
     // playableArea right edge is board.width - RADIUS.
@@ -127,7 +129,7 @@ Deno.test("calculateMoves() leaves moves untouched when no pieces are within rea
         friendlies: [makePiece(500 + 2000, 500, true, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     // reach = maxDistance + RADIUS * 2 = 1128; the friendly is 2000 away.
     const [move] = calculator.calculateMoves(piece)
@@ -142,7 +144,7 @@ Deno.test("calculateMoves() trims a move short when a friendly piece blocks it",
         friendlies: [makePiece(800, 500, true, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
     assertAlmostEquals(move.to.x, 736)
@@ -156,7 +158,7 @@ Deno.test("calculateMoves() extends a move onto an enemy piece's square so it ca
         enemies: [makePiece(800, 500, false, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
     assertAlmostEquals(move.to.x, 864)
@@ -173,7 +175,7 @@ Deno.test("calculateMoves() only applies the nearest friendly obstruction on a d
         ],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
     assertAlmostEquals(move.to.x, 586)
@@ -190,7 +192,7 @@ Deno.test("calculateMoves() stops immediately, skipping enemy checks, when a fri
         enemies: [makePiece(900, 500, false, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
 
     const [move] = calculator.calculateMoves(piece)
     assertAlmostEquals(move.from.x, 500)
@@ -204,7 +206,7 @@ Deno.test("calculateMoves() handles each direction of a multi-directional move s
         friendlies: [makePiece(800, 500, true, null)], // only obstructs the +x direction
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0, Math.PI]))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0), new Vector(-1, 0)]))
 
     const [blocked, clear] = calculator.calculateMoves(piece)
     assertAlmostEquals(blocked.to.x, 736)
@@ -226,7 +228,7 @@ Deno.test("calculateMoves() lets a jumping piece land on either side of a blocki
         friendlies: [makePiece(800, 500, true, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0], true))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [nearSide, farSide] = calculator.calculateMoves(piece)
     assertAlmostEquals(nearSide.from.x, 500)
@@ -242,7 +244,7 @@ Deno.test("calculateMoves() lets a jumping piece land beyond an enemy piece it c
         enemies: [makePiece(800, 500, false, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0], true))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [capture, beyond] = calculator.calculateMoves(piece)
     assertAlmostEquals(capture.from.x, 500)
@@ -259,7 +261,7 @@ Deno.test("calculateMoves() still lets a jumping piece capture a lone enemy even
         enemies: [makePiece(800, 500, false, null), makePiece(1000, 500, false, null)],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0], true))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [capture, beyond] = calculator.calculateMoves(piece)
     assertAlmostEquals(capture.from.x, 500)
@@ -280,7 +282,7 @@ Deno.test("calculateMoves() clears two friendly pieces close enough together tha
         ],
     })
     const calculator = new ObstructionCalculator(board)
-    const piece = makePiece(500, 500, true, new MoveSet(1000, [0], true))
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
 
     const [nearSide, farSide] = calculator.calculateMoves(piece)
     assertAlmostEquals(nearSide.from.x, 500)
@@ -338,6 +340,118 @@ Deno.test("calculateMoves() never extends a pawn's diagonal capture past one squ
     const pawn = makePawn(500, 500, true, false)
 
     const [diagonal] = calculator.calculateMoves(pawn)
-    assertAlmostEquals(diagonal.to.x, 500 + Math.cos(Math.PI / 4) * 100)
-    assertAlmostEquals(diagonal.to.y, 500 + Math.sin(Math.PI / 4) * 100)
+    assertAlmostEquals(diagonal.to.x, 600)
+    assertAlmostEquals(diagonal.to.y, 600)
+})
+
+// ---------------------------------------------------------------------------
+// calculateMoves() when a line starts inside an obstruction
+// ---------------------------------------------------------------------------
+// The mover's own position can end up inside another piece's obstruction
+// circle (e.g. two pieces closer together than the obstruction radius). The
+// line must never be blocked by extending backward past its own `from`
+// point - instead it should block right at the start and, for a jumping
+// piece, resume wherever the obstruction's circle actually ends.
+
+Deno.test("calculateMoves() blocks entirely, without reaching backward, when a non-jumping piece starts inside a friendly obstruction", () => {
+    const board = makeBoard({
+        width: 5000,
+        height: 5000,
+        friendlies: [makePiece(520, 500, true, null)],
+    })
+    const calculator = new ObstructionCalculator(board)
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)]))
+
+    const [move] = calculator.calculateMoves(piece)
+    assertAlmostEquals(move.from.x, 500)
+    assertAlmostEquals(move.to.x, 500)
+})
+
+Deno.test("calculateMoves() resumes a jumping piece's line at the obstruction's far edge when it starts inside it", () => {
+    const board = makeBoard({
+        width: 5000,
+        height: 5000,
+        friendlies: [makePiece(520, 500, true, null)],
+    })
+    const calculator = new ObstructionCalculator(board)
+    const piece = makePiece(500, 500, true, new MoveSet(0, 1000, [new Vector(1, 0)], true))
+
+    const [nearSide, farSide] = calculator.calculateMoves(piece)
+    // Blocked immediately at the mover's own position, never before it.
+    assertAlmostEquals(nearSide.from.x, 500)
+    assertAlmostEquals(nearSide.to.x, 500)
+    // The line picks back up exactly where the obstruction's circle ends.
+    assertAlmostEquals(farSide.from.x, 584)
+    assertAlmostEquals(farSide.to.x, 1500)
+})
+
+Deno.test("calculateMoves() does not throw when a jump's line clips entirely off the board", () => {
+    const board = makeBoard({
+        width: 2000,
+        height: 2000,
+        // Any nearby piece reaches this: nearbyObstructions() considers it
+        // for every direction of the move set, not just ones actually
+        // heading toward it.
+        friendlies: [makePiece(RADIUS + 50, RADIUS + 50, true, null)],
+    })
+    const calculator = new ObstructionCalculator(board)
+    // A knight-shaped move (minDistance 0.5 * SPACE) starting at the
+    // playable area's top-left corner: the (-2, -1) jump's `from` point is
+    // already off the board, so the whole line clips to undefined.
+    const knight = makePiece(RADIUS, RADIUS, true, new MoveSet(50, 100, [new Vector(-2, -1)], true))
+
+    const moves = calculator.calculateMoves(knight)
+    assertEquals(moves, [])
+})
+
+// ---------------------------------------------------------------------------
+// calculateMoves() with a non-unit-length direction vector (e.g. a Knight's
+// (2, 1)) combined with a non-zero minDistance
+// ---------------------------------------------------------------------------
+// nearbyObstructions() has to measure its reach out to where the line
+// actually ends, not from the raw MoveSet.maxDistance scalar - a direction
+// vector like (2, 1) has length sqrt(5), so a knight's real reach is over
+// twice that scalar. Getting this wrong drops obstructions near the far end
+// of the leap, and - because minDistance pushes the line's near end away
+// from the piece's own square - near its start too.
+
+Deno.test("calculateMoves() blocks a knight-shaped jump on a friendly piece sitting on its landing square", () => {
+    const board = makeBoard({
+        width: 5000,
+        height: 5000,
+        // 223.6 away from the piece - beyond maxDistance(100) + obstructionRadius(64),
+        // so it would be missed entirely unless the reach also scales by the
+        // direction vector's length (sqrt(5) for a (2, 1) knight jump).
+        friendlies: [makePiece(700, 600, true, null)],
+    })
+    const calculator = new ObstructionCalculator(board)
+    const knight = makePiece(500, 500, true, new MoveSet(50, 100, [new Vector(2, 1)], true))
+
+    const [move] = calculator.calculateMoves(knight)
+    assertAlmostEquals(move.from.x, 600)
+    assertAlmostEquals(move.from.y, 550)
+    assertAlmostEquals(move.to.x, 642.7566597760053)
+    assertAlmostEquals(move.to.y, 571.3783298880027)
+})
+
+Deno.test("calculateMoves() blocks a knight-shaped jump on a friendly piece overlapping the start of its line, even though the piece itself sits beyond the raw maxDistance", () => {
+    // This friendly sits exactly on the boundary of the jump's real starting
+    // point (minDistance out along the (2, 1) direction), covering the rest
+    // of the line - but it's 175.8 away from the piece's own square, still
+    // beyond maxDistance(100) + obstructionRadius(64).
+    const board = makeBoard({
+        width: 5000,
+        height: 5000,
+        friendlies: [makePiece(657.2433402239947, 578.6216701119973, true, null)],
+    })
+    const calculator = new ObstructionCalculator(board)
+    const knight = makePiece(500, 500, true, new MoveSet(50, 100, [new Vector(2, 1)], true))
+
+    const [move] = calculator.calculateMoves(knight)
+    // Blocked right at the line's own start - never left unobstructed as it
+    // would be if the obstruction had gone undetected.
+    assertAlmostEquals(move.from.x, 600)
+    assertAlmostEquals(move.from.y, 550)
+    assertAlmostEquals(move.to.x, 600)
+    assertAlmostEquals(move.to.y, 550)
 })

@@ -15,20 +15,14 @@ export class ObstructionCalculator {
     }
 
     calculateMoves(piece) {
-        const lines = piece.moveSet.createLines(piece.position)
         const specialRules = this.specialMoveRules(piece)
-        const obstructions = this.nearbyObstructions(piece, specialRules.straightDistance)
+        const lines = piece.moveSet.createLines(piece.position)
+            .map((line, index) => this.extendForDoubleMove(line, specialRules.isStraight(index) && specialRules.canDoubleMove, specialRules.straightDistance))
+        const obstructions = this.nearbyObstructions(piece, lines)
 
         return lines.flatMap((line, index) => this.calculateLineMoves(line, index, specialRules, obstructions))
     }
 
-    // A pawn's move set is [diagonal, straight, diagonal] - the first
-    // and last lines are captures, only legal when they actually land
-    // on an enemy piece, never as a plain move onto an empty square.
-    //
-    // A pawn that hasn't moved yet this game may push two squares on
-    // its straight line - never diagonally, since diagonals are
-    // captures and a pawn can't capture two squares away.
     specialMoveRules(piece) {
         const isPawn = piece.type === "pawn"
         const canDoubleMove = isPawn && !piece.hasMoved
@@ -43,11 +37,9 @@ export class ObstructionCalculator {
         }
     }
 
-    // Every other piece on the board that could plausibly obstruct a move
-    // along a line up to `reachDistance` long, nearest first.
-    nearbyObstructions(piece, reachDistance) {
+    nearbyObstructions(piece, lines) {
         const obstructionRadius = RADIUS * 2
-        const reach = reachDistance + obstructionRadius
+        const reach = Math.max(...lines.map(line => Vector.between(piece.position, line.to).length)) + obstructionRadius
         const reachSquared = reach * reach
 
         const toObstruction = other => {
@@ -63,10 +55,10 @@ export class ObstructionCalculator {
     }
 
     calculateLineMoves(line, index, specialRules, obstructions) {
-        const { isStraight, isDiagonal, canDoubleMove, straightDistance, canJump } = specialRules
+        const { isStraight, isDiagonal, canJump } = specialRules
 
-        const extended = this.extendForDoubleMove(line, isStraight(index) && canDoubleMove, straightDistance)
-        const clamped = this.clamp(extended)
+        const clamped = this.clamp(line)
+        if (!clamped) return [] // The line lies entirely outside the playable area - no legal moves this way.
         const intersections = this.findIntersections(clamped, obstructions)
 
         // A pawn cannot move diagonally if it isn't capturing an enemy
@@ -92,7 +84,8 @@ export class ObstructionCalculator {
         for (const obs of obstructions) {
             const result = obs.circle.intersectLine(clamped)
             if (!result) continue
-            if (result.lambda1 < 0) continue
+            if (result.lambda2 < 0) continue
+            if (result.lambda1 * result.lambda2 < 0) result.lambda1 = 0
             intersections.push({ in: true, position: result.lambda1, friendly: obs.friendly })
             intersections.push({ in: false, position: result.lambda2, friendly: obs.friendly })
         }

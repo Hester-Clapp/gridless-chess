@@ -1,26 +1,13 @@
-import { TAU } from "../entity/geometry/constants.js"
-
-// All ring highlights share the same saturation/lightness - hue is the only
-// thing that varies between them - so the set reads as one palette while
-// staying distinct at a glance (and CHECK no longer collides with CAPTURE,
-// which previously used the identical red).
 const HIGHLIGHT_S = 75
 const HIGHLIGHT_L = 48
 const PIECE_HIGHLIGHT_COLOUR = `hsl(200, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // gold - piece being dragged
 const THREAT_HIGHLIGHT_COLOUR = `hsl(28, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // orange - piece delivering check
 const CAPTURE_HIGHLIGHT_COLOUR = `hsl(355, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // red - piece about to be captured
+const MOVE_LINE_COLOUR = "hsla(135, 75%, 48%, 0.75)" // green - legal move path
 
-// Translucent rather than a solid ring, so it gets its own lightness/alpha
-// rather than sharing HIGHLIGHT_S/L above.
-const MOVE_LINE_COLOUR = "hsla(135, 70%, 38%, 0.75)" // green - legal move path
-
-// Resolved relative to this module rather than the page, so the renderer
-// works no matter where index.html ends up serving from.
 const ASSET_DIR = new URL("../assets/", import.meta.url)
 
 export class Renderer {
-    // Piece images are shared across every piece of the same type/colour,
-    // and loading is async, so they're cached here instead of on the piece.
     images = new Map()
 
     renderBoard(board, ctx, captureTarget = null, checkStatus = { king: null, threats: [] }, flipped = false, lastMovedPiece = null) {
@@ -39,23 +26,15 @@ export class Renderer {
         }
     }
 
-    // `highlight` is null for a plain piece, "selected" for the piece being
-    // dragged, "capture" for a piece the current drag would take, "check"
-    // for a king currently in check, "threat" for an enemy piece delivering
-    // that check, or "lastMove" for the piece that made the previous move.
     drawPiece(piece, ctx, highlight = null, board = null, flipped = false) {
         const image = this.getImage(piece.assetName)
 
-        // Position/size are read inside the closure (not captured up front)
-        // so a draw that was waiting on a slow image load still reflects
-        // where the piece is by the time it actually fires. renderPosition
-        // (rather than position) is what tracks a drag in progress.
         const draw = () => {
             const { x, y } = this.toDisplayPoint(piece.renderPosition, board, flipped)
             const size = piece.radius * 2
             ctx.moveTo(x + piece.radius, y)
             ctx.beginPath()
-            ctx.arc(x, y, piece.radius, 0, TAU)
+            ctx.arc(x, y, piece.radius, 0, 2 * Math.PI)
             ctx.closePath()
             ctx.lineWidth = highlight === "check" ? 4 : 2
             ctx.strokeStyle = highlight === "selected" ? PIECE_HIGHLIGHT_COLOUR
@@ -81,9 +60,6 @@ export class Renderer {
     drawMoves(board, piece, ctx, flipped = false) {
         this.drawPiece(piece, ctx, "selected", board, flipped)
 
-        // calculateMoves() returns undefined for a direction that's been
-        // clamped away entirely (e.g. off the edge of the board), so those
-        // need dropping before anything gets drawn.
         const moves = board.calculateMoves(piece)
 
         ctx.save()
@@ -101,11 +77,6 @@ export class Renderer {
         ctx.restore()
     }
 
-    // Rotates a real board-coordinate point 180° about the board's centre
-    // when `flipped` - a point-reflection through the centre, which is
-    // exactly what a 180° rotation does. Leaves the point untouched
-    // otherwise. Used only for where things are drawn; nothing that feeds
-    // back into game logic ever sees a flipped coordinate.
     toDisplayPoint(point, board, flipped) {
         return flipped
             ? { x: board.width - point.x, y: board.height - point.y }
