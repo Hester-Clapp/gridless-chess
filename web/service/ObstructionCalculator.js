@@ -16,96 +16,126 @@ export class ObstructionCalculator {
 
     calculateMoves(piece) {
         const lines = piece.moveSet.createLines(piece.position)
+        const specialRules = this.specialMoveRules(piece)
+        const obstructions = this.nearbyObstructions(piece, specialRules.straightDistance)
 
-        // A pawn's move set is [diagonal, straight, diagonal] - the first
-        // and last lines are captures, only legal when they actually land
-        // on an enemy piece, never as a plain move onto an empty square.
+        return lines.flatMap((line, index) => this.calculateLineMoves(line, index, specialRules, obstructions))
+    }
+
+    // A pawn's move set is [diagonal, straight, diagonal] - the first
+    // and last lines are captures, only legal when they actually land
+    // on an enemy piece, never as a plain move onto an empty square.
+    //
+    // A pawn that hasn't moved yet this game may push two squares on
+    // its straight line - never diagonally, since diagonals are
+    // captures and a pawn can't capture two squares away.
+    specialMoveRules(piece) {
         const isPawn = piece.type === "pawn"
-        const isStraight = index => isPawn && index === 1
-        const isDiagonal = index => isPawn && !isStraight(index)
-
-        // A pawn that hasn't moved yet this game may push two squares on
-        // its straight line - never diagonally, since diagonals are
-        // captures and a pawn can't capture two squares away.
         const canDoubleMove = isPawn && !piece.hasMoved
         const straightDistance = canDoubleMove ? piece.moveSet.maxDistance * 2 : piece.moveSet.maxDistance
 
-        const canJump = piece.moveSet.canJump
-        const obstructionRadius = RADIUS * 2
+        return {
+            isStraight: index => isPawn && index === 1,
+            isDiagonal: index => isPawn && index !== 1,
+            canDoubleMove,
+            straightDistance,
+            canJump: piece.moveSet.canJump,
+        }
+    }
 
-        const reach = straightDistance + obstructionRadius
+    // Every other piece on the board that could plausibly obstruct a move
+    // along a line up to `reachDistance` long, nearest first.
+    nearbyObstructions(piece, reachDistance) {
+        const obstructionRadius = RADIUS * 2
+        const reach = reachDistance + obstructionRadius
         const reachSquared = reach * reach
+
         const toObstruction = other => {
             const dx = other.position.x - piece.position.x
             const dy = other.position.y - piece.position.y
             return { friendly: (piece.white === other.white), circle: new Circle(other.position, obstructionRadius), distanceSquared: dx * dx + dy * dy }
         }
-        const nearby = list => list
+
+        return this.board.getOtherPieces(piece)
             .map(toObstruction)
             .filter(({ distanceSquared }) => distanceSquared <= reachSquared)
             .sort((a, b) => a.distanceSquared - b.distanceSquared)
+    }
 
-        const nearbyObstructions = nearby(this.board.getOtherPieces(piece))
+    calculateLineMoves(line, index, specialRules, obstructions) {
+        const { isStraight, isDiagonal, canDoubleMove, straightDistance, canJump } = specialRules
 
-        return lines.flatMap((line, index) => {
-            // Stretch the straight line out to the double-move distance
-            // before anything else sees it, so clamping and obstruction
-            // detection both treat it exactly like any other move.
-            const extended = isStraight(index) && canDoubleMove
-                ? new Line(line.from, line.normal.times(straightDistance).translate(line.from))
-                : line
+        const extended = this.extendForDoubleMove(line, isStraight(index) && canDoubleMove, straightDistance)
+        const clamped = this.clamp(extended)
+        const intersections = this.findIntersections(clamped, obstructions)
 
-            const clamped = this.clamp(extended)
-            const originalLength = clamped.length
+        // A pawn cannot move diagonally if it isn't capturing an enemy
+        if (isDiagonal(index) && intersections.every(x => x.friendly)) return []
 
-            const intersections = []
+        const maxEnemyDepth = isStraight(index) ? 0 : 1 // A pawn can't capture an enemy if it is moving straight
+        return this.scanObstructions(clamped, intersections, maxEnemyDepth, canJump)
+    }
 
-            for (const obs of nearbyObstructions) {
-                const result = obs.circle.intersectLine(clamped)
-                if (!result) continue
-                if (result.lambda1 < 0) continue
-                intersections.push({ in: true, position: result.lambda1, friendly: obs.friendly })
-                intersections.push({ in: false, position: result.lambda2, friendly: obs.friendly })
+    // Stretch the straight line out to the double-move distance before
+    // anything else sees it, so clamping and obstruction detection both
+    // treat it exactly like any other move.
+    extendForDoubleMove(line, shouldExtend, straightDistance) {
+        if (!shouldExtend) return line
+        return new Line(line.from, line.normal.times(straightDistance).translate(line.from))
+    }
+
+    // Where a clamped line crosses each nearby obstruction's circle,
+    // sorted from nearest to farthest along the line.
+    findIntersections(clamped, obstructions) {
+        const intersections = []
+
+        for (const obs of obstructions) {
+            const result = obs.circle.intersectLine(clamped)
+            if (!result) continue
+            if (result.lambda1 < 0) continue
+            intersections.push({ in: true, position: result.lambda1, friendly: obs.friendly })
+            intersections.push({ in: false, position: result.lambda2, friendly: obs.friendly })
+        }
+
+        return intersections.sort((a, b) => a.position - b.position)
+    }
+
+    // Scan the intersections along the line, splitting it into the
+    // unobstructed segments a piece can actually move through.
+    scanObstructions(clamped, sortedIntersections, maxEnemyDepth, canJump) {
+        const originalLength = clamped.length
+        const maxFriendDepth = 0
+
+        let friendDepth = 0
+        let enemyDepth = 0
+        let blocked = false
+        let lastBoundary = 0
+        let segments = [clamped]
+
+        for (const intersection of sortedIntersections) {
+            if (intersection.position > originalLength) break
+
+            const change = intersection.in ? 1 : -1
+            if (intersection.friendly) friendDepth += change
+            else enemyDepth += change
+
+            const lastSegment = segments[segments.length - 1]
+
+            if ((!blocked && intersection.in && (friendDepth > maxFriendDepth || enemyDepth > maxEnemyDepth)) // If entering an obstruction
+                || (!intersection.in && !canJump && enemyDepth === 0)) { // Or coming out of an enemy obstruction
+                blocked = true
+                segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary)
+                if (!canJump) return segments
             }
 
-            // A pawn cannot move diagonally if it isn't capturing an enemy
-            if (isDiagonal(index) && intersections.every(x => x.friendly)) return []
-
-            const sorted = intersections.sort((a, b) => a.position - b.position)
-            let friendDepth = 0
-            let enemyDepth = 0
-            let blocked = false
-            let lastBoundary = 0
-            let segments = [clamped]
-
-            const maxFriendDepth = 0
-            const maxEnemyDepth = isStraight(index) ? 0 : 1 // A pawn can't capture an enemy if it is moving straight
-
-            for (const intersection of sorted) {
-                if (intersection.position > originalLength) break
-
-                const change = intersection.in ? 1 : -1
-                if (intersection.friendly) friendDepth += change
-                else enemyDepth += change
-
-                const lastSegment = segments[segments.length - 1]
-
-                if ((!blocked && intersection.in && (friendDepth > maxFriendDepth || enemyDepth > maxEnemyDepth)) // If entering an obstruction
-                    || (!intersection.in && !canJump && enemyDepth === 0)) { // Or coming out of an enemy obstruction
-                    blocked = true
-                    segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary)
-                    if (!canJump) return segments
-                }
-                
-                if (blocked && !intersection.in && friendDepth <= maxFriendDepth && enemyDepth <= maxEnemyDepth) {
-                    blocked = false
-                    lastBoundary = intersection.position
-                    segments.push(this.trimStart(clamped, intersection.position))
-                }
+            if (blocked && !intersection.in && friendDepth <= maxFriendDepth && enemyDepth <= maxEnemyDepth) {
+                blocked = false
+                lastBoundary = intersection.position
+                segments.push(this.trimStart(clamped, intersection.position))
             }
+        }
 
-            return segments
-        })
+        return segments
     }
 
     clamp(line) {

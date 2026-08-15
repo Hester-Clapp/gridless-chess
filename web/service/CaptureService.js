@@ -1,4 +1,5 @@
 import { RADIUS } from "../entity/geometry/constants.js"
+import { Vector } from "../entity/geometry/Vector.js"
 
 // Two pieces are treated as occupying the same spot - and so capturing one
 // another - once their circles overlap, i.e. the distance between their
@@ -13,23 +14,36 @@ export class CaptureService {
     // (that's ObstructionCalculator's job, before the move happens).
     resolveCaptures(board, piece) {
         const enemyList = piece.white ? board.pieces.black : board.pieces.white
-        const captured = enemyList.filter(enemy => this.intersects(piece, enemy))
+        const captured = this.findCaptureAt(board, piece)
+        // const captured = enemyList.filter(enemy => this.intersects(piece, enemy))
 
-        if (captured.length === 0) return null
-        const enemy = captured[0]
-        const index = enemyList.indexOf(enemy)
+        if (!captured) return null
+        const index = enemyList.indexOf(captured)
         if (index !== -1) enemyList.splice(index, 1)
 
-        return enemy
+        return captured
     }
 
-    // Same intersection rule as resolveCaptures(), but against a hypothetical
-    // position rather than the piece's real one and without mutating the
-    // board - lets the UI preview what a drag would capture before the move
-    // actually commits. Returns null if the point wouldn't capture anything.
-    findCaptureAt(board, piece, point) {
+    // Enemy pieces that could capture `piece` right now, i.e. whose legal
+    // moves reach within capture distance of its square. Used to detect
+    // check by calling with a king as `piece`.
+    findThreateningPieces(board, piece) {
+        return board.getEnemyPieces(piece).filter(enemy =>
+            board.calculateMoves(enemy).some(line =>
+                this.intersectsPoint(line.closestPoint(piece.position), piece)
+            )
+        )
+    }
+
+
+    findCaptureAt(board, piece, point = piece.position) {
         const enemyList = piece.white ? board.pieces.black : board.pieces.white
-        return enemyList.find(enemy => this.intersectsPoint(point, enemy)) ?? null
+        const captures = enemyList
+            .map(enemy => ({ enemy, distance: this.distanceFrom(point, enemy) }))
+            .filter(v => v.distance < CAPTURE_DISTANCE)
+            .sort((a, b) => a.distance - b.distance)
+            .map(v => v.enemy)
+        return captures.length > 0 ? captures[0] : null
     }
 
     intersects(a, b) {
@@ -37,8 +51,10 @@ export class CaptureService {
     }
 
     intersectsPoint(point, piece) {
-        const dx = point.x - piece.position.x
-        const dy = point.y - piece.position.y
-        return dx * dx + dy * dy < CAPTURE_DISTANCE * CAPTURE_DISTANCE
+        return this.distanceFrom(point, piece) < CAPTURE_DISTANCE
+    }
+    
+    distanceFrom(point, piece) {
+        return Vector.between(point, piece.position).length
     }
 }

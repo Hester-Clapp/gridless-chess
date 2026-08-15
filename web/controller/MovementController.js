@@ -13,6 +13,7 @@ export class MovementController {
     renderer
     canvas
     ctx
+    statusDisplay
     selectedPiece = null
     captureService = new CaptureService()
 
@@ -28,18 +29,26 @@ export class MovementController {
     // highlight always matches the live drag position.
     captureTarget = null
 
-    constructor(game, renderer, canvas, ctx) {
+    // The piece whose move most recently landed, or null before either side
+    // has moved. Highlighted on redraw so a player can see what their
+    // opponent just did.
+    lastMovedPiece = null
+
+    constructor(game, renderer, canvas, ctx, statusDisplay) {
         this.game = game
         this.board = game.board
         this.renderer = renderer
         this.canvas = canvas
         this.ctx = ctx
+        this.statusDisplay = statusDisplay
 
-        this.canvas.addEventListener("mousedown", event => this.onMouseDown(event))
+        this.canvas.addEventListener("pointerdown", event => this.onMouseDown(event))
         // Listened for on the window, not the canvas, so a drag that ends
         // outside the canvas bounds still resolves instead of getting stuck.
-        window.addEventListener("mousemove", event => this.onMouseMove(event))
-        window.addEventListener("mouseup", event => this.onMouseUp(event))
+        window.addEventListener("pointermove", event => this.onMouseMove(event))
+        window.addEventListener("pointerup", event => this.onMouseUp(event))
+
+        this.redraw()
     }
 
     onMouseDown(event) {
@@ -94,6 +103,7 @@ export class MovementController {
             // cached calculateMoves() result rather than trying to reason
             // about which pieces are affected.
             this.board.invalidateMoveCache()
+            this.lastMovedPiece = this.selectedPiece
             // Only a move that actually lands (as opposed to an
             // aborted drag, handled below) hands the turn over.
             this.game.advanceTurn()
@@ -136,15 +146,28 @@ export class MovementController {
 
     // Click coordinates arrive in CSS pixels relative to the viewport, but
     // piece positions are in canvas pixels, so this maps one to the other -
-    // accounting for the canvas being scaled/resized by CSS.
+    // accounting for the canvas being scaled/resized by CSS. Also undoes the
+    // 180° rotation the renderer applies when it's black's turn, so a click
+    // still lands on whatever's drawn under the cursor - the result is
+    // still a real board coordinate, so nothing downstream needs to know
+    // the board was ever flipped.
     toBoardPoint(event) {
         const rect = this.canvas.getBoundingClientRect()
         const scaleX = this.canvas.width / rect.width
         const scaleY = this.canvas.height / rect.height
-        return {
+        const point = {
             x: (event.clientX - rect.left) * scaleX,
             y: (event.clientY - rect.top) * scaleY
         }
+        return this.isFlipped()
+            ? { x: this.board.width - point.x, y: this.board.height - point.y }
+            : point
+    }
+
+    // Black's turn is drawn rotated 180° so whoever's on move has their own
+    // pieces at the bottom of the screen.
+    isFlipped() {
+        return !this.game.whiteToMove
     }
 
     findPieceAt(point) {
@@ -156,8 +179,13 @@ export class MovementController {
     }
 
     redraw() {
+        const checkStatus = this.game.getCheckStatus()
+
+        const flipped = this.isFlipped()
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-        this.renderer.renderBoard(this.board, this.ctx, this.captureTarget)
-        if (this.selectedPiece) this.renderer.drawMoves(this.board, this.selectedPiece, this.ctx)
+        this.renderer.renderBoard(this.board, this.ctx, this.captureTarget, checkStatus, flipped, this.lastMovedPiece)
+        if (this.selectedPiece) this.renderer.drawMoves(this.board, this.selectedPiece, this.ctx, flipped)
+        this.statusDisplay.update(this.game, checkStatus)
     }
 }

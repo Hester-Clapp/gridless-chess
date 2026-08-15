@@ -9,10 +9,7 @@ export class Board {
         white: [],
         black: []
     }
-
-    // Built once per board rather than per calculateMoves() call: the
-    // playable area it derives only depends on board dimensions, not piece
-    // positions, so there's nothing to invalidate between calls.
+    moveCache = null
     obstructionCalculator
 
     constructor() {
@@ -51,7 +48,20 @@ export class Board {
         return [...this.pieces.white, ...this.pieces.black].filter(v => v !== piece)
     }
 
-    moveCache = null
+    getFriendlyPieces(piece) {
+        return piece.white ? this.pieces.white.filter(v => v !== piece) : this.pieces.black.filter(v => v !== piece)
+    }
+
+    getEnemyPieces(piece) {
+        return piece.white ? [...this.pieces.black] : [...this.pieces.white]
+    }
+
+    // The king of the given colour, or undefined if it's already been
+    // captured (kept as a lookup rather than tracked separately, since a
+    // captured king just falls out of pieces.white/black like anything else).
+    getKing(white) {
+        return (white ? this.pieces.white : this.pieces.black).find(piece => piece.type === "king")
+    }
 
     calculateMoves(piece) {
         if (this.moveCache && this.moveCache.piece === piece) {
