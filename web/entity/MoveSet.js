@@ -20,16 +20,3 @@ export class MoveSet {
         })
     }
 }
-
-export class QueenMoveSet extends MoveSet {
-    constructor() {
-        super()
-    }
-}
-
-export class KingMoveSet extends QueenMoveSet {
-    constructor() {
-        super()
-        this.maxDistance = SPACE
-    }
-}

@@ -83,15 +83,20 @@ export class MovementController {
         if (!this.selectedPiece || !this.dragLines) return
 
         const point = this.toBoardPoint(event)
-        if (!this.withinDeadZone(point, event.shiftKey)) {
-            const destination = this.closestPointOnLines(point)
-            if (destination) {
-                this.selectedPiece.position = destination
-                this.captureService.resolveCaptures(this.board, this.selectedPiece)
-                // Only a move that actually lands (as opposed to an
-                // aborted drag, handled below) hands the turn over.
-                this.game.advanceTurn()
-            }
+        const destination = this.closestPointOnLines(point)
+
+        if (destination && !this.withinDeadZone(destination, event.shiftKey)) {
+            this.selectedPiece.position = destination
+            this.selectedPiece.hasMoved = true
+            this.captureService.resolveCaptures(this.board, this.selectedPiece)
+            // The move (and any capture it caused) can change what's legal
+            // for every piece on the board, not just this one, so drop the
+            // cached calculateMoves() result rather than trying to reason
+            // about which pieces are affected.
+            this.board.invalidateMoveCache()
+            // Only a move that actually lands (as opposed to an
+            // aborted drag, handled below) hands the turn over.
+            this.game.advanceTurn()
         }
 
         this.selectedPiece.dragPosition = null

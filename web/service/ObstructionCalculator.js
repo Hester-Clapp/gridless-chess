@@ -22,12 +22,18 @@ export class ObstructionCalculator {
         // on an enemy piece, never as a plain move onto an empty square.
         const isPawn = piece.type === "pawn"
         const isStraight = index => isPawn && index === 1
-        const isDiagonalCapture = index => isPawn && !isStraight(index)
+        const isDiagonal = index => isPawn && !isStraight(index)
+
+        // A pawn that hasn't moved yet this game may push two squares on
+        // its straight line - never diagonally, since diagonals are
+        // captures and a pawn can't capture two squares away.
+        const canDoubleMove = isPawn && !piece.hasMoved
+        const straightDistance = canDoubleMove ? piece.moveSet.maxDistance * 2 : piece.moveSet.maxDistance
 
         const canJump = piece.moveSet.canJump
         const obstructionRadius = RADIUS * 2
 
-        const reach = piece.moveSet.maxDistance + obstructionRadius
+        const reach = straightDistance + obstructionRadius
         const reachSquared = reach * reach
         const toObstruction = other => {
             const dx = other.position.x - piece.position.x
@@ -42,18 +48,28 @@ export class ObstructionCalculator {
         const nearbyObstructions = nearby(this.board.getOtherPieces(piece))
 
         return lines.flatMap((line, index) => {
-            const clamped = this.clamp(line)
+            // Stretch the straight line out to the double-move distance
+            // before anything else sees it, so clamping and obstruction
+            // detection both treat it exactly like any other move.
+            const extended = isStraight(index) && canDoubleMove
+                ? new Line(line.from, line.normal.times(straightDistance).translate(line.from))
+                : line
+
+            const clamped = this.clamp(extended)
             const originalLength = clamped.length
 
             const intersections = []
 
             for (const obs of nearbyObstructions) {
-                const result = this.intersectCircle(clamped, obs.circle)
+                const result = obs.circle.intersectLine(clamped)
                 if (!result) continue
                 if (result.lambda1 < 0) continue
                 intersections.push({ in: true, position: result.lambda1, friendly: obs.friendly })
                 intersections.push({ in: false, position: result.lambda2, friendly: obs.friendly })
             }
+
+            // A pawn cannot move diagonally if it isn't capturing an enemy
+            if (isDiagonal(index) && intersections.every(x => x.friendly)) return []
 
             const sorted = intersections.sort((a, b) => a.position - b.position)
             let friendDepth = 0
@@ -61,6 +77,9 @@ export class ObstructionCalculator {
             let blocked = false
             let lastBoundary = 0
             let segments = [clamped]
+
+            const maxFriendDepth = 0
+            const maxEnemyDepth = isStraight(index) ? 0 : 1 // A pawn can't capture an enemy if it is moving straight
 
             for (const intersection of sorted) {
                 if (intersection.position > originalLength) break
@@ -71,33 +90,21 @@ export class ObstructionCalculator {
 
                 const lastSegment = segments[segments.length - 1]
 
-                if (!blocked && intersection.in && (friendDepth > 0 || enemyDepth > 1)) {
+                if ((!blocked && intersection.in && (friendDepth > maxFriendDepth || enemyDepth > maxEnemyDepth)) // If entering an obstruction
+                    || (!intersection.in && !canJump && enemyDepth === 0)) { // Or coming out of an enemy obstruction
                     blocked = true
-                    segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary - 1)
+                    segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary)
                     if (!canJump) return segments
                 }
-
-                if (blocked && !intersection.in && (friendDepth <= 0 && enemyDepth <= 1)) {
+                
+                if (blocked && !intersection.in && friendDepth <= maxFriendDepth && enemyDepth <= maxEnemyDepth) {
                     blocked = false
                     lastBoundary = intersection.position
-                    segments.push(this.trimStart(clamped, intersection.position + 1))
+                    segments.push(this.trimStart(clamped, intersection.position))
                 }
             }
 
             return segments
-
-
-            // // A pawn's diagonal never had a piece to capture, so it isn't
-            // // a legal move at all - not even as far as the obstruction.
-            // if (isDiagonalCapture(index) && !passedCapturableEnemy) return []
-
-            // // Drop segments an obstruction hollowed out entirely, keeping
-            // // the reachable segment(s) on the other side of it. If every
-            // // segment collapsed, keep one to signal "no move" as before.
-            // const nonEmpty = segments.filter(({ line }) => line.length > 0)
-            // const surviving = nonEmpty.length > 0 ? nonEmpty : [segments[0]]
-
-            // return surviving.map(({ line }) => this.clamp(line))
         })
     }
 
@@ -140,24 +147,6 @@ export class ObstructionCalculator {
             vector.times(t1).translate(line.from)
         )
     }
-
-    intersectCircle(line, circle) {
-        const displacement = Vector.between(line.from, circle.centre)
-        const dot = displacement.dot(line.normal)
-        const discriminant = dot ** 2 + circle.radius ** 2 - displacement.length ** 2
-        if (discriminant <= 0) return null
-
-        const lambda1 = dot - Math.sqrt(discriminant)
-        const lambda2 = dot + Math.sqrt(discriminant)
-        return { lambda1, lambda2 }
-    }
-
-    // adjustSegment(line, lambda1, lambda2) {
-    //     return new Line(
-    //         line.normal.times(lambda1, line.length).translate(line.from),
-    //         line.normal.times(lambda2, line.length).translate(line.from)
-    //     )
-    // }
 
     trimStart(line, lambda) {
         return new Line(line.normal.times(lambda).translate(line.from), line.to)

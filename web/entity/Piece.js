@@ -7,6 +7,12 @@ export class Piece {
     radius = RADIUS
     moveSet = null
 
+    // Tracks whether this piece has ever completed a move. Only pawns care
+    // about it today (their first move may cover two squares), but it's
+    // kept on the base class since move history is a property of the piece,
+    // not the pawn subclass.
+    hasMoved = false
+
     // Set by the movement controller while a drag is in progress. This is
     // deliberately separate from `position` - it's a purely visual stand-in
     // so a drag can be rendered without committing anything to the board
@@ -38,17 +44,18 @@ export class Piece {
 export class Pawn extends Piece {
     constructor(x, y, white) {
         super(x, y, white)
-        this.moveSet = new MoveSet(SPACE, white
-        ? [
-            5 * QUARTER_PI, 
-            3 * HALF_PI, 
-            7 * QUARTER_PI
-        ]
-        : [
-            QUARTER_PI, 
-            HALF_PI, 
-            3 * QUARTER_PI
-        ])
+        this.moveSet = new MoveSet(SPACE, 
+            white ? [
+                5 * QUARTER_PI, 
+                3 * HALF_PI, 
+                7 * QUARTER_PI
+            ]
+            : [
+                QUARTER_PI, 
+                HALF_PI, 
+                3 * QUARTER_PI
+            ]
+        )
     }
 }
 

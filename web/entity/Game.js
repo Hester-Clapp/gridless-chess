@@ -15,6 +15,6 @@ export class Game {
     }
 
     advanceTurn() {
-        // this.whiteToMove = !this.whiteToMove
+        this.whiteToMove = !this.whiteToMove
     }
 }

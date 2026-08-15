@@ -51,15 +51,19 @@ export class Board {
         return [...this.pieces.white, ...this.pieces.black].filter(v => v !== piece)
     }
 
-    // getFriendlyPieces(piece) {
-    //     return piece.white ? this.pieces.white.filter(v => v !== piece) : this.pieces.black.filter(v => v !== piece)
-    // }
-
-    // getEnemyPieces(piece) {
-    //     return piece.white ? [...this.pieces.black] : [...this.pieces.white]
-    // }
+    moveCache = null
 
     calculateMoves(piece) {
-        return this.obstructionCalculator.calculateMoves(piece)
+        if (this.moveCache && this.moveCache.piece === piece) {
+            return this.moveCache.moves
+        }
+
+        const moves = this.obstructionCalculator.calculateMoves(piece).filter(line => line !== undefined)
+        this.moveCache = { piece, moves }
+        return moves
+    }
+
+    invalidateMoveCache() {
+        this.moveCache = null
     }
 }

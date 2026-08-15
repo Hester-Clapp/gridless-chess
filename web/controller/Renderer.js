@@ -66,7 +66,7 @@ export class Renderer {
         // calculateMoves() returns undefined for a direction that's been
         // clamped away entirely (e.g. off the edge of the board), so those
         // need dropping before anything gets drawn.
-        const moves = board.calculateMoves(piece).filter(line => line !== undefined)
+        const moves = board.calculateMoves(piece)
 
         ctx.save()
         ctx.strokeStyle = MOVE_LINE_COLOUR
