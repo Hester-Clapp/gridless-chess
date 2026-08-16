@@ -1,10 +1,9 @@
 const HIGHLIGHT_S = 75
 const HIGHLIGHT_L = 48
-const PIECE_HIGHLIGHT_COLOUR = `hsl(200, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // gold - piece being dragged
-const THREAT_HIGHLIGHT_COLOUR = `hsl(28, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // orange - piece delivering check
+const PIECE_HIGHLIGHT_COLOUR = `hsl(200, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // cyan - piece being dragged
+const THREAT_HIGHLIGHT_COLOUR = `hsl(50, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // yellow - piece delivering check
 const CAPTURE_HIGHLIGHT_COLOUR = `hsl(355, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // red - piece about to be captured
 const MOVE_LINE_COLOUR = "hsla(135, 75%, 48%, 0.75)" // green - legal move path
-
 const ASSET_DIR = new URL("../assets/", import.meta.url)
 
 export class Renderer {
@@ -42,10 +41,10 @@ export class Renderer {
             ctx.arc(x, y, piece.radius, 0, 2 * Math.PI)
             ctx.closePath()
             ctx.lineWidth = highlight === "check" ? 4 : 2
-            ctx.strokeStyle = highlight === "selected" ? PIECE_HIGHLIGHT_COLOUR
-                : highlight === "lastMove" ? PIECE_HIGHLIGHT_COLOUR
-                : highlight === "capture" ? CAPTURE_HIGHLIGHT_COLOUR
-                : highlight === "check" ? CAPTURE_HIGHLIGHT_COLOUR
+            ctx.strokeStyle = (highlight === "selected" 
+                    || highlight === "lastMove") ? PIECE_HIGHLIGHT_COLOUR
+                : (highlight === "capture" 
+                    || highlight === "check") ? CAPTURE_HIGHLIGHT_COLOUR
                 : highlight === "threat" ? THREAT_HIGHLIGHT_COLOUR
                 : "lightgrey"
             ctx.stroke()

@@ -1,5 +1,5 @@
 import { SPACE, HALF_SPACE } from "./geometry/constants.js"
-import { Queen } from "./Piece.js"
+import { Vector } from "./geometry/Vector.js"
 
 export class Board {
     width
@@ -8,15 +8,23 @@ export class Board {
         white: [],
         black: []
     }
+    deviation
 
-    constructor() {
+    constructor(deviation = 0.08 * SPACE) {
         this.width = 8 * SPACE
         this.height = 8 * SPACE
+        this.deviation = deviation
     }
 
     addPiece(Type, x, y) {
-        const whitePiece = new Type(x * SPACE + HALF_SPACE, this.height - y * SPACE - HALF_SPACE, true)
-        const blackPiece = new Type(x * SPACE + HALF_SPACE, y * SPACE + HALF_SPACE, false)
+        const base = {
+            x: x * SPACE + HALF_SPACE,
+            y: y * SPACE + HALF_SPACE
+        }
+        const whitePosition = Vector.random(this.deviation).translate(base)
+        const blackPosition = Vector.random(this.deviation).translate(base)
+        const whitePiece = new Type(whitePosition.x, this.height - whitePosition.y, true)
+        const blackPiece = new Type(blackPosition.x, blackPosition.y, false)
         this.pieces.white.push(whitePiece)
         this.pieces.black.push(blackPiece)
     }

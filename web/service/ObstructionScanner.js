@@ -43,14 +43,14 @@ export class ObstructionScanner {
             if ((!blocked && intersection.in && (friendDepth > maxFriendDepth || enemyDepth > maxEnemyDepth)) // If entering an obstruction
                 || (!intersection.in && !canJump && enemyDepth === 0)) { // Or coming out of an enemy obstruction
                 blocked = true
-                segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary)
+                segments[segments.length - 1] = this.trimEnd(lastSegment, intersection.position - lastBoundary - 1e-9)
                 if (!canJump) return segments
             }
 
             if (blocked && !intersection.in && friendDepth <= maxFriendDepth && enemyDepth <= maxEnemyDepth) {
                 blocked = false
                 lastBoundary = intersection.position
-                segments.push(this.trimStart(clamped, intersection.position))
+                segments.push(this.trimStart(clamped, intersection.position + 1e-9))
             }
         }
 

@@ -71,7 +71,7 @@ export class MovementController {
         const point = this.toBoardPoint(event)
         const destination = this.closestPointOnLines(point)
 
-        if (destination && !this.withinDeadZone(point, event.shiftKey)) {
+        if (destination && !this.withinDeadZone(point, event.shiftKey) && !this.withinDeadZone(destination, event.shiftKey)) {
             this.selectedPiece.position = destination
             this.selectedPiece.hasMoved = true
             this.captureService.resolveCaptures(this.board, this.selectedPiece)

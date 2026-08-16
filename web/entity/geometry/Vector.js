@@ -15,6 +15,14 @@ export class Vector {
         return new Vector(r * Math.cos(theta), r * Math.sin(theta))
     }
 
+    static random(standardDeviation) {
+        const theta  = 2 * Math.PI * Math.random();
+        const R   = Math.sqrt(-2 * Math.log(Math.random())) * standardDeviation;
+        const x   = R * Math.cos(theta);
+        const y   = R * Math.sin(theta);
+        return new Vector(x, y);
+    }
+
     dot(that) {
         return this.x * that.x + this.y * that.y
     }
