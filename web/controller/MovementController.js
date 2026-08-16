@@ -35,11 +35,19 @@ export class MovementController {
         this.canvas.addEventListener("pointerdown", event => this.onMouseDown(event))
         window.addEventListener("pointermove", event => this.onMouseMove(event))
         window.addEventListener("pointerup", event => this.onMouseUp(event))
+        window.addEventListener("pointercancel", event => this.onMouseCancel(event))
 
         this.redraw()
     }
 
     onMouseDown(event) {
+        // Touch input has no hover, and without this the browser treats the
+        // gesture as a page scroll/zoom and never delivers pointerup at all -
+        // capturing the pointer keeps the whole drag routed to the canvas
+        // even if a finger drifts outside its bounds.
+        event.preventDefault()
+        this.canvas.setPointerCapture?.(event.pointerId)
+
         const point = this.toBoardPoint(event)
         const piece = this.board.getPieceAt(point)
 
@@ -79,6 +87,19 @@ export class MovementController {
             this.lastMovedPiece = this.selectedPiece
         }
 
+        this.endDrag()
+    }
+
+    // Fires instead of pointerup when the OS/browser interrupts the touch
+    // (e.g. an incoming call, or the system deciding it's a scroll after
+    // all) - just abandon the drag rather than leaving the piece stuck.
+    onMouseCancel() {
+        if (!this.selectedPiece || !this.dragLines) return
+
+        this.endDrag()
+    }
+
+    endDrag() {
         this.selectedPiece.dragPosition = null
         this.dragLines = null
         this.selectedPiece = null
