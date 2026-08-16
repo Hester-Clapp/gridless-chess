@@ -1,4 +1,5 @@
 import { RADIUS } from "../entity/geometry/constants.js"
+import { Circle } from "../entity/geometry/Circle.js"
 
 const DRAG_DEAD_ZONE = RADIUS
 
@@ -12,13 +13,14 @@ export class MovementController {
     moveService
     captureService
     promotionService
+    moveExecutionService
 
     selectedPiece = null
     dragLines = null
     captureTarget = null
     lastMovedPiece = null
 
-    constructor(game, renderer, canvas, ctx, statusDisplay, moveService, captureService, promotionService) {
+    constructor(game, renderer, canvas, ctx, statusDisplay, moveService, captureService, promotionService, moveExecutionService) {
         this.game = game
         this.board = game.board
         this.renderer = renderer
@@ -28,6 +30,7 @@ export class MovementController {
         this.moveService = moveService
         this.captureService = captureService
         this.promotionService = promotionService
+        this.moveExecutionService = moveExecutionService
 
         this.canvas.addEventListener("pointerdown", event => this.onMouseDown(event))
         window.addEventListener("pointermove", event => this.onMouseMove(event))
@@ -38,12 +41,12 @@ export class MovementController {
 
     onMouseDown(event) {
         const point = this.toBoardPoint(event)
-        const piece = this.findPieceAt(point)
+        const piece = this.board.getPieceAt(point)
 
         this.selectedPiece = piece && piece !== this.selectedPiece && this.game.isTurn(piece) ? piece : null
 
         this.dragLines = this.selectedPiece
-            ? this.moveService.calculateMoves(this.selectedPiece).filter(line => line !== undefined && line.length > 0)
+            ? this.moveService.calculateMoves(this.selectedPiece)
             : null
         this.captureTarget = null
 
@@ -56,7 +59,7 @@ export class MovementController {
         const point = this.toBoardPoint(event)
         this.selectedPiece.dragPosition = this.withinDeadZone(point, event.shiftKey)
             ? null
-            : this.closestPointOnLines(point)
+            : this.moveService.closestLegalPoint(this.dragLines, point)
 
         this.captureTarget = this.selectedPiece.dragPosition
             ? this.captureService.findCaptureAt(this.board, this.selectedPiece, this.selectedPiece.dragPosition)
@@ -69,22 +72,11 @@ export class MovementController {
         if (!this.selectedPiece || !this.dragLines) return
 
         const point = this.toBoardPoint(event)
-        const destination = this.closestPointOnLines(point)
+        const destination = this.moveService.closestLegalPoint(this.dragLines, point)
 
         if (destination && !this.withinDeadZone(point, event.shiftKey) && !this.withinDeadZone(destination, event.shiftKey)) {
-            this.selectedPiece.position = destination
-            this.selectedPiece.hasMoved = true
-            this.captureService.resolveCaptures(this.board, this.selectedPiece)
-            this.selectedPiece = this.promotionService.resolvePromotion(this.board, this.selectedPiece)
-            this.moveService.invalidateCache()
+            this.selectedPiece = this.moveExecutionService.commitMove(this.game, this.board, this.selectedPiece, destination)
             this.lastMovedPiece = this.selectedPiece
-
-            const winner = this.captureService.getWinner(this.board)
-            if (winner !== null) {
-                this.game.declareWinner(winner)
-            } else {
-                this.game.advanceTurn()
-            }
         }
 
         this.selectedPiece.dragPosition = null
@@ -98,23 +90,7 @@ export class MovementController {
     withinDeadZone(point, shiftHeld) {
         if (shiftHeld) return false
 
-        const origin = this.selectedPiece.position
-        const dx = point.x - origin.x
-        const dy = point.y - origin.y
-        return dx * dx + dy * dy <= DRAG_DEAD_ZONE * DRAG_DEAD_ZONE
-    }
-
-    closestPointOnLines(point) {
-        let closest = null
-        let closestDistance = Infinity
-        for (const line of this.dragLines) {
-            const distance = line.distanceTo(point)
-            if (distance < closestDistance) {
-                closestDistance = distance
-                closest = line.closestPoint(point)
-            }
-        }
-        return closest
+        return new Circle(this.selectedPiece.position, DRAG_DEAD_ZONE).containsPoint(point)
     }
 
     toBoardPoint(event) {
@@ -125,21 +101,11 @@ export class MovementController {
             x: (event.clientX - rect.left) * scaleX,
             y: (event.clientY - rect.top) * scaleY
         }
-        return this.isFlipped()
-            ? { x: this.board.width - point.x, y: this.board.height - point.y }
-            : point
+        return this.isFlipped() ? this.board.mirror(point) : point
     }
 
     isFlipped() {
         return !this.game.whiteToMove
-    }
-
-    findPieceAt(point) {
-        return this.board.getAllPieces().find(piece => {
-            const dx = piece.position.x - point.x
-            const dy = piece.position.y - point.y
-            return dx * dx + dy * dy <= piece.radius * piece.radius
-        })
     }
 
     redraw() {

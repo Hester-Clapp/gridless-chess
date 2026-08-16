@@ -9,6 +9,10 @@ export class Circle {
         this.radius = radius
     }
 
+    containsPoint(point) {
+        return Vector.between(this.centre, point).length <= this.radius
+    }
+
     intersectLine(line) {
         const displacement = Vector.between(line.from, this.centre)
         const dot = displacement.dot(line.normal)

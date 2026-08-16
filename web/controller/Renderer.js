@@ -82,9 +82,7 @@ export class Renderer {
     }
 
     toDisplayPoint(point, board, flipped) {
-        return flipped
-            ? { x: board.width - point.x, y: board.height - point.y }
-            : point
+        return flipped ? board.mirror(point) : point
     }
 
     assetNameFor(piece) {

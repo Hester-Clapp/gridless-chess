@@ -1,5 +1,6 @@
 import { SPACE, HALF_SPACE } from "./geometry/constants.js"
 import { Vector } from "./geometry/Vector.js"
+import { Circle } from "./geometry/Circle.js"
 
 export class Board {
     width
@@ -48,10 +49,15 @@ export class Board {
         return piece.white ? [...this.pieces.black] : [...this.pieces.white]
     }
 
-    // The king of the given colour, or undefined if it's already been
-    // captured (kept as a lookup rather than tracked separately, since a
-    // captured king just falls out of pieces.white/black like anything else).
     getKing(white) {
         return (white ? this.pieces.white : this.pieces.black).find(piece => piece.type === "king")
+    }
+
+    getPieceAt(point) {
+        return this.getAllPieces().find(piece => new Circle(piece.position, piece.radius).containsPoint(point))
+    }
+
+    mirror(point) {
+        return { x: this.width - point.x, y: this.height - point.y }
     }
 }

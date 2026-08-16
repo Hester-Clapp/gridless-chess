@@ -28,9 +28,24 @@ export class MoveCalculator {
         const obstructions = this.nearbyObstructions(piece, lines)
 
         const moves = lines.flatMap((line, index) => this.calculateLineMoves(line, index, specialRules, obstructions))
-            .filter(line => line !== undefined)
+            .filter(line => line && line.length > 1e-6)
         this.moveCache = { piece, moves }
         return moves
+    }
+
+    // The point on any of `lines` closest to `point` - used to snap an
+    // arbitrary drag position onto the nearest legal destination.
+    closestLegalPoint(lines, point) {
+        let closest = null
+        let closestDistance = Infinity
+        for (const line of lines) {
+            const distance = line.distanceTo(point)
+            if (distance < closestDistance) {
+                closestDistance = distance
+                closest = line.closestPoint(point)
+            }
+        }
+        return closest
     }
 
     // The board (and any capture it caused) can change what's legal for
