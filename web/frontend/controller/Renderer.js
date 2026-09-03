@@ -4,7 +4,7 @@ const PIECE_HIGHLIGHT_COLOUR = `hsl(200, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // c
 const THREAT_HIGHLIGHT_COLOUR = `hsl(50, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // yellow - piece delivering check
 const CAPTURE_HIGHLIGHT_COLOUR = `hsl(355, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // red - piece about to be captured
 const MOVE_LINE_COLOUR = "hsla(135, 75%, 48%, 0.75)" // green - legal move path
-const ASSET_DIR = new URL("../assets/", import.meta.url)
+const ASSET_DIR = new URL("../../assets/", import.meta.url)
 
 export class Renderer {
     images = new Map()

@@ -1,4 +1,4 @@
-import { Pawn, Knight, Bishop, Rook, Queen, King } from "../entity/Piece.js"
+import { Pawn, Knight, Bishop, Rook, Queen, King } from "../../shared/entity/Piece.js"
 
 // Lays out the standard chess starting position. Kept apart from Board
 // itself - which only knows how to hold and place pieces - because "what

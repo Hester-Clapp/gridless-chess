@@ -1,5 +1,5 @@
-import { RADIUS } from "../entity/geometry/constants.js"
-import { Queen } from "../entity/Piece.js"
+import { SPACE, RADIUS } from "../../shared/entity/geometry/constants.js"
+import { Queen } from "../../shared/entity/Piece.js"
 
 // A pawn that reaches the far edge of the board promotes to a queen -
 // the only promotion this variant supports, so there's no choice to offer.
@@ -24,9 +24,14 @@ export class PromotionService {
 
     // A pawn moves toward y = RADIUS (white) or y = board.height - RADIUS
     // (black) - the extremes MoveCalculator's playable area clamps it to -
-    // so reaching either edge means landing on that boundary.
+    // but since movement here is continuous rather than grid-locked, we
+    // don't wait for it to land exactly on that boundary: once its far
+    // edge (the leading edge, one RADIUS ahead of its centre) is within a
+    // space of the board's true edge, it's close enough to promote.
     hasReachedFarEdge(board, piece) {
-        const edgeY = piece.white ? RADIUS : board.height - RADIUS
-        return Math.abs(piece.position.y - edgeY) < 0.5
+        const distanceFromEdge = piece.white
+            ? piece.position.y - RADIUS
+            : board.height - (piece.position.y + RADIUS)
+        return distanceFromEdge < SPACE
     }
 }

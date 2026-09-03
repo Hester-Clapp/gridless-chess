@@ -1,5 +1,5 @@
-import { RADIUS } from "../entity/geometry/constants.js"
-import { Vector } from "../entity/geometry/Vector.js"
+import { RADIUS } from "../../shared/entity/geometry/constants.js"
+import { Vector } from "../../shared/entity/geometry/Vector.js"
 
 // Two pieces are treated as occupying the same spot - and so capturing one
 // another - once their circles overlap, i.e. the distance between their
@@ -61,7 +61,6 @@ export class CaptureService {
             )
         )
     }
-
 
     findCaptureAt(board, piece, point = piece.position) {
         const enemyList = piece.white ? board.pieces.black : board.pieces.white
