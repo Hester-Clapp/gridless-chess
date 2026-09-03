@@ -1,5 +1,5 @@
-import { SPACE, RADIUS } from "../../shared/entity/geometry/constants.js"
-import { Queen } from "../../shared/entity/Piece.js"
+import { SPACE, RADIUS } from "../../web/shared/entity/geometry/constants.js"
+import { Queen } from "../../web/shared/entity/Piece.js"
 
 // A pawn that reaches the far edge of the board promotes to a queen -
 // the only promotion this variant supports, so there's no choice to offer.

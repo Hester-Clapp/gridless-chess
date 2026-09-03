@@ -1,5 +1,4 @@
-import { SPACE, HALF_SPACE } from "./geometry/constants.js"
-import { Vector } from "./geometry/Vector.js"
+import { SPACE } from "./geometry/constants.js"
 import { Circle } from "./geometry/Circle.js"
 
 export class Board {
@@ -17,17 +16,13 @@ export class Board {
         this.deviation = deviation
     }
 
-    addPiece(Type, x, y) {
-        const base = {
-            x: x * SPACE + HALF_SPACE,
-            y: y * SPACE + HALF_SPACE
-        }
-        const whitePosition = Vector.random(this.deviation).translate(base)
-        const blackPosition = Vector.random(this.deviation).translate(base)
-        const whitePiece = new Type(whitePosition.x, this.height - whitePosition.y, true)
-        const blackPiece = new Type(blackPosition.x, blackPosition.y, false)
-        this.pieces.white.push(whitePiece)
-        this.pieces.black.push(blackPiece)
+    // Adds an already-constructed piece to the board's collection for its
+    // colour. Working out where that piece should sit - mirroring, opening
+    // layout, random deviation - is a setup concern, not a board one; see
+    // BoardSetupService.
+    addPiece(piece) {
+        const collection = piece.white ? this.pieces.white : this.pieces.black
+        collection.push(piece)
     }
 
     // All pieces, both colours, for callers like the Renderer that don't

@@ -6,6 +6,6 @@
         "test": "deno test --parallel"
     },
     "test": {
-        "include": ["web/shared/", "web/frontend/", "web/backend/"]
+        "include": ["web/shared/", "web/frontend/", "backend/"]
     }
 }

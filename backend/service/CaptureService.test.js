@@ -1,5 +1,5 @@
 import { assertEquals, assertStrictEquals } from "@std/assert"
-import { RADIUS } from "../../shared/entity/geometry/constants.js"
+import { RADIUS } from "../../web/shared/entity/geometry/constants.js"
 import { CaptureService } from "./CaptureService.js"
 
 const makePiece = (x, y, white) => ({ position: { x, y }, white })

@@ -12,12 +12,12 @@ import { GameClient } from "./frontend/interface/GameClient.js"
 // --- Temporary in-process stand-in for the backend. Delete this block
 // and swap GameClient's constructor arg for a WebSocket connection
 // once the server exists; nothing below this comment should change. ---
-import { GameSession } from "./backend/interface/GameSession.js"
-import { BoardSetupService } from "./backend/service/BoardSetupService.js"
-import { MoveExecutionService } from "./backend/service/MoveExecutionService.js"
-import { MoveValidator } from "./backend/service/MoveValidator.js"
-import { CaptureService } from "./backend/service/CaptureService.js"
-import { PromotionService } from "./backend/service/PromotionService.js"
+import { GameSession } from "../backend/interface/GameSession.js"
+import { BoardSetupService } from "../backend/service/BoardSetupService.js"
+import { MoveExecutionService } from "../backend/service/MoveExecutionService.js"
+import { MoveValidator } from "../backend/service/MoveValidator.js"
+import { CaptureService } from "../backend/service/CaptureService.js"
+import { PromotionService } from "../backend/service/PromotionService.js"
 
 const serverBoard = new Board()
 new BoardSetupService().standardSetup(serverBoard)
