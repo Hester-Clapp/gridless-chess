@@ -1,69 +1,18 @@
-const HIGHLIGHT_S = 75
-const HIGHLIGHT_L = 48
-const PIECE_HIGHLIGHT_COLOUR = `hsl(200, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // cyan - piece being dragged
-const THREAT_HIGHLIGHT_COLOUR = `hsl(50, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // yellow - piece delivering check
-const CAPTURE_HIGHLIGHT_COLOUR = `hsl(355, ${HIGHLIGHT_S}%, ${HIGHLIGHT_L}%)` // red - piece about to be captured
 const MOVE_LINE_COLOUR = "hsla(135, 75%, 48%, 0.75)" // green - legal move path
-const ASSET_DIR = new URL("../../assets/", import.meta.url)
 
+// Draws only the legal-move lines onto the canvas now - the pieces
+// themselves are rendered as real DOM elements by PieceLayer (see
+// BoardView), so a screen reader sees actual piece elements instead of
+// canvas pixels. The canvas still exists purely to show a selected piece's
+// possible moves.
 export class Renderer {
-    images = new Map()
     moveService
 
     constructor(moveService) {
         this.moveService = moveService
     }
 
-    renderBoard(board, ctx, captureTarget = null, checkStatus = { king: null, threats: [] }, flipped = false, lastMovedPiece = null) {
-        this.drawPieces(board, ctx, captureTarget, checkStatus, flipped, lastMovedPiece)
-    }
-
-    drawPieces(board, ctx, captureTarget = null, checkStatus = { king: null, threats: [] }, flipped = false, lastMovedPiece = null) {
-        const inCheck = checkStatus.threats.length > 0
-        for (const piece of board.getAllPieces()) {
-            const highlight = piece === captureTarget ? "capture"
-                : inCheck && piece === checkStatus.king ? "check"
-                : inCheck && checkStatus.threats.includes(piece) ? "threat"
-                : piece === lastMovedPiece ? "lastMove"
-                : null
-            this.drawPiece(piece, ctx, highlight, board, flipped)
-        }
-    }
-
-    drawPiece(piece, ctx, highlight = null, board = null, flipped = false) {
-        const image = this.getImage(this.assetNameFor(piece))
-
-        const draw = () => {
-            const { x, y } = this.toDisplayPoint(piece.renderPosition, board, flipped)
-            const size = piece.radius * 2
-            ctx.moveTo(x + piece.radius, y)
-            ctx.beginPath()
-            ctx.arc(x, y, piece.radius, 0, 2 * Math.PI)
-            ctx.closePath()
-            ctx.lineWidth = highlight === "check" ? 4 : 2
-            ctx.strokeStyle = (highlight === "selected" 
-                    || highlight === "lastMove") ? PIECE_HIGHLIGHT_COLOUR
-                : (highlight === "capture" 
-                    || highlight === "check") ? CAPTURE_HIGHLIGHT_COLOUR
-                : highlight === "threat" ? THREAT_HIGHLIGHT_COLOUR
-                : "lightgrey"
-            ctx.stroke()
-            ctx.drawImage(
-                image,
-                x - piece.radius,
-                y - piece.radius,
-                size,
-                size
-            )
-        }
-
-        if (image.complete) draw()
-        else image.addEventListener("load", draw, { once: true })
-    }
-
     drawMoves(board, piece, ctx, flipped = false) {
-        this.drawPiece(piece, ctx, "selected", board, flipped)
-
         const moves = this.moveService.calculateMoves(piece)
 
         ctx.save()
@@ -83,19 +32,5 @@ export class Renderer {
 
     toDisplayPoint(point, board, flipped) {
         return flipped ? board.mirror(point) : point
-    }
-
-    assetNameFor(piece) {
-        return `${piece.type}-${piece.white ? "w" : "b"}.svg`
-    }
-
-    getImage(name) {
-        let image = this.images.get(name)
-        if (!image) {
-            image = new Image()
-            image.src = new URL(name, ASSET_DIR).href
-            this.images.set(name, image)
-        }
-        return image
     }
 }

@@ -8,6 +8,7 @@ const canvas = document.getElementById("board")
 const screenController = new GameScreenController({
     canvas,
     ctx: canvas.getContext("2d"),
+    piecesContainer: document.getElementById("pieces"),
     statusDisplay: new StatusDisplay(document.getElementById("status")),
     queueScreen: document.getElementById("queue"),
     gameScreen: document.getElementById("game"),

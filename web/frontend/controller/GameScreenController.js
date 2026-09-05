@@ -1,4 +1,5 @@
 import { Renderer } from "./Renderer.js"
+import { PieceLayer } from "./PieceLayer.js"
 import { DragController } from "./DragController.js"
 import { BoardCoordinateMapper } from "./BoardCoordinateMapper.js"
 import { BoardView } from "./BoardView.js"
@@ -11,16 +12,18 @@ import { DragMoveService } from "../service/DragMoveService.js"
 // state that has to survive across snapshots: this connection's fixed seat,
 // the running render callback, the last-moved piece (resolved fresh against
 // each snapshot's board, not tracked by any DragGesture) - and the drag
-// wiring itself (DragMoveService/DragController/PointerInputBinder), which
+// wiring itself (DragMoveService/DragController/PointerInputBinder), plus
+// the PieceLayer that owns this connection's piece DOM elements, which
 // initScreen() builds once and refreshScreen() only ever repoints at a new
 // turn's state, never rebuilds. GameApp drives this via applyInit/
 // applyUpdate and never touches canvas/DOM itself; this never touches the
 // socket - onMove is the only way a drag attempt here reaches back out to
 // the network, and GameApp is the one who points it at a real client.
 export class GameScreenController {
-    constructor({ canvas, ctx, statusDisplay, queueScreen, gameScreen, playAgainButton }) {
+    constructor({ canvas, ctx, piecesContainer, statusDisplay, queueScreen, gameScreen, playAgainButton }) {
         this.canvas = canvas
         this.ctx = ctx
+        this.piecesContainer = piecesContainer
         this.statusDisplay = statusDisplay
         this.queueScreen = queueScreen
         this.gameScreen = gameScreen
@@ -36,6 +39,7 @@ export class GameScreenController {
         // torn down and rebuilt only on reset(), never per turn.
         this.dragMoveService = null
         this.pointerInputBinder = null
+        this.pieceLayer = null
     }
 
     // SPA-style screen swap - both screens live in the DOM from page load,
@@ -62,6 +66,8 @@ export class GameScreenController {
         this.pointerInputBinder?.destroy()
         this.pointerInputBinder = null
         this.dragMoveService = null
+        this.pieceLayer?.destroy()
+        this.pieceLayer = null
     }
 
     applyInit({ white, board, game, movedPieceId }) {
@@ -88,6 +94,7 @@ export class GameScreenController {
             (pieceId, position) => this.onMove(pieceId, position)
         )
         this.pointerInputBinder = new PointerInputBinder(this.canvas, coordinateMapper, dragController, this.isFlipped)
+        this.pieceLayer = new PieceLayer(this.piecesContainer)
 
         this.refreshScreen({ board, game, movedPieceId })
     }
@@ -105,7 +112,7 @@ export class GameScreenController {
         const captureService = new CaptureService(moveService)
         const renderer = new Renderer(moveService)
 
-        const view = new BoardView(game, board, renderer, this.canvas, this.ctx, this.statusDisplay, captureService, this.isFlipped, reason)
+        const view = new BoardView(game, board, renderer, this.pieceLayer, this.canvas, this.ctx, this.statusDisplay, captureService, this.isFlipped, reason)
         this.render = snapshot => view.render(snapshot)
 
         this.dragMoveService.update(game, board, moveService, captureService)

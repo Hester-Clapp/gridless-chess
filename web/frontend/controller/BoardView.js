@@ -1,8 +1,9 @@
 export class BoardView {
-    constructor(game, board, renderer, canvas, ctx, statusDisplay, captureService, isFlipped, reason = null) {
+    constructor(game, board, renderer, pieceLayer, canvas, ctx, statusDisplay, captureService, isFlipped, reason = null) {
         this.game = game
         this.board = board
         this.renderer = renderer
+        this.pieceLayer = pieceLayer
         this.canvas = canvas
         this.ctx = ctx
         this.statusDisplay = statusDisplay
@@ -16,8 +17,14 @@ export class BoardView {
         const flipped = this.isFlipped()
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-        this.renderer.renderBoard(this.board, this.ctx, gesture.captureTarget, checkStatus, flipped, gesture.lastMovedPiece)
         if (gesture.selectedPiece) this.renderer.drawMoves(this.board, gesture.selectedPiece, this.ctx, flipped)
+        this.pieceLayer.sync(this.board, {
+            captureTarget: gesture.captureTarget,
+            checkStatus,
+            flipped,
+            lastMovedPiece: gesture.lastMovedPiece,
+            selectedPiece: gesture.selectedPiece,
+        })
         this.statusDisplay.update(this.game, checkStatus, this.reason)
     }
 }
