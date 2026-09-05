@@ -19,12 +19,15 @@ export class GameSession {
         const validation = this.moveValidator.validate(this.game, piece, position)
         if (!validation.legal) return { ...this.snapshot(), rejected: true, reason: validation.reason }
 
-        this.moveExecutionService.commitMove(this.game, this.board, piece, position)
-        return this.snapshot()
+        // Commit to the validator's snapped position, not whatever the
+        // caller supplied - once this crosses a real network boundary the
+        // server needs to stay authoritative about the exact destination.
+        const resultingPiece = this.moveExecutionService.commitMove(this.game, this.board, piece, validation.position)
+        return { ...this.snapshot(), movedPieceId: resultingPiece.id }
     }
 
     snapshot() {
-        return { boardState: this.board, turn: this.game.whiteToMove }
+        return { boardState: this.board, turn: this.game.whiteToMove, winner: this.game.winner }
         // boardState is the entity itself for now — swap for a
         // serialized form once this crosses a real network boundary
     }

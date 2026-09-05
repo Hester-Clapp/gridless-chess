@@ -52,6 +52,10 @@ export class Board {
         return this.getAllPieces().find(piece => new Circle(piece.position, piece.radius).containsPoint(point))
     }
 
+    getPieceById(id) {
+        return this.getAllPieces().find(piece => piece.id === id)
+    }
+
     mirror(point) {
         return { x: this.width - point.x, y: this.height - point.y }
     }

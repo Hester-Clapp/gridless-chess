@@ -11,11 +11,14 @@ export class StatusDisplay {
     // `checkStatus` is whatever CaptureService.getCheckStatus() returned
     // for the player currently on the move. Ignored once the game is over,
     // since "in check" is meaningless after a king's already been taken.
-    update(game, checkStatus) {
+    // `reason` is the wire UPDATE's forfeit marker ("disconnected") or null
+    // for a real win, so a forfeit reads differently from a king capture.
+    update(game, checkStatus, reason = null) {
         this.element.classList.toggle("winner", game.isOver)
 
         if (game.isOver) {
-            this.element.textContent = `${game.winner ? "White" : "Black"} wins!`
+            const winner = game.winner ? "White" : "Black"
+            this.element.textContent = reason === "disconnected" ? `${winner} wins — opponent disconnected` : `${winner} wins!`
             this.element.classList.remove("check")
             return
         }

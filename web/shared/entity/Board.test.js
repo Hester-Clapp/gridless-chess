@@ -39,3 +39,18 @@ Deno.test("mirror() is its own inverse", () => {
 
     assertEquals(board.mirror(board.mirror(point)), point)
 })
+
+Deno.test("getPieceById() returns the piece with a matching id", () => {
+    const board = new Board()
+    const piece = { ...makePiece(100, 100), id: "abc" }
+    board.pieces.white.push(piece)
+
+    assertStrictEquals(board.getPieceById("abc"), piece)
+})
+
+Deno.test("getPieceById() returns undefined when no piece matches", () => {
+    const board = new Board()
+    board.pieces.white.push({ ...makePiece(100, 100), id: "abc" })
+
+    assertEquals(board.getPieceById("nope"), undefined)
+})

@@ -58,12 +58,19 @@ export class MoveCalculator {
 
     specialMoveRules(piece) {
         const isPawn = piece.type === "pawn"
+        const isKing = piece.type === "king"
         const canDoubleMove = isPawn && !piece.hasMoved
         const straightDistance = canDoubleMove ? piece.moveSet.maxDistance * 2 : piece.moveSet.maxDistance
 
         return {
             isStraight: index => isPawn && index === 1,
             isDiagonal: index => isPawn && index !== 1,
+            // True for any direction that's a single fixed-length step rather
+            // than a genuine slide: every king move, and a pawn move in any
+            // direction except a straight advance it's allowed to double -
+            // that one still covers two squares and has to be swept like a
+            // slide so a piece on the near square can block it.
+            isHop: index => isKing || (isPawn && !(index === 1 && canDoubleMove)),
             canDoubleMove,
             straightDistance,
             canJump: piece.moveSet.canJump,
@@ -88,10 +95,13 @@ export class MoveCalculator {
     }
 
     calculateLineMoves(line, index, specialRules, obstructions) {
-        const { isStraight, isDiagonal, canJump } = specialRules
+        const { isStraight, isDiagonal, isHop, canJump } = specialRules
 
         const clamped = this.clamp(line)
         if (!clamped) return [] // The line lies entirely outside the playable area - no legal moves this way.
+
+        if (isHop(index)) return this.hopMove(clamped, isStraight(index), isDiagonal(index), obstructions)
+
         const intersections = this.scanner.findIntersections(clamped, obstructions)
 
         // A pawn cannot move diagonally if it isn't capturing an enemy
@@ -99,6 +109,24 @@ export class MoveCalculator {
 
         const maxEnemyDepth = isStraight(index) ? 0 : 1 // A pawn can't capture an enemy if it is moving straight
         return this.scanner.scanObstructions(clamped, intersections, maxEnemyDepth, canJump)
+    }
+
+    // A single fixed-length step - a pawn's diagonal capture, a pawn's
+    // one-square advance once it's already moved, or any king move - isn't a
+    // ray to be swept for obstructions along its length; only what's sitting
+    // on the destination square itself matters. Scanning the whole path (as
+    // the branch above does for genuine slides) let a piece merely *near*
+    // that path - most often a pawn's own file-neighbour, still standing on
+    // its home square - wrongly block or truncate a move nothing was
+    // actually in the way of.
+    hopMove(clamped, isStraight, isDiagonal, obstructions) {
+        const atDestination = obstructions.filter(o => o.circle.containsPoint(clamped.to))
+        const friendlyThere = atDestination.some(o => o.friendly)
+
+        if (friendlyThere) return [] // own piece occupies the square
+        if (isStraight && atDestination.length > 0) return [] // a pawn can't capture by stepping straight ahead
+        if (isDiagonal && atDestination.length === 0) return [] // a pawn can't step diagonally onto an empty square
+        return [clamped]
     }
 
     // Stretch the straight line out to the double-move distance before

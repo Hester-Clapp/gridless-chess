@@ -1,13 +1,13 @@
 import { DragGesture } from "../../shared/entity/DragGesture.js"
 
 export class DragController {
-    constructor(game, board, moveService, captureService, moveExecutionService, onChange) {
+    constructor(game, board, moveService, captureService, onChange, onCommitAttempt) {
         this.game = game
         this.board = board
         this.moveService = moveService
         this.captureService = captureService
-        this.moveExecutionService = moveExecutionService
         this.onChange = onChange
+        this.onCommitAttempt = onCommitAttempt
         this.gesture = new DragGesture()
     }
 
@@ -40,9 +40,12 @@ export class DragController {
 
         const destination = this.moveService.closestLegalPoint(this.gesture.dragLines, point)
 
+        // The server is authoritative now - this just asks; the actual
+        // move (and the "last moved" highlight) only takes effect once its
+        // update comes back over the wire, so there's no piece to record
+        // here the way commitMove() used to hand one back synchronously.
         if (destination && !this.gesture.withinDeadZone(point, shiftHeld) && !this.gesture.withinDeadZone(destination, shiftHeld)) {
-            const movedPiece = this.moveExecutionService.commitMove(this.game, this.board, this.gesture.selectedPiece, destination)
-            this.gesture.recordMove(movedPiece)
+            this.onCommitAttempt(this.gesture.selectedPiece.id, destination)
         }
 
         this.gesture.clear()

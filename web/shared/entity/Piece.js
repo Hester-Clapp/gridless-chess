@@ -3,6 +3,7 @@ import { SPACE, RADIUS } from "./geometry/constants.js"
 import { MoveSet } from "./MoveSet.js"
 
 export class Piece {
+    id
     position = null
     white
     radius = RADIUS
@@ -12,6 +13,7 @@ export class Piece {
     value
 
     constructor(x, y, white, value) {
+        this.id = crypto.randomUUID()
         this.position = { x, y }
         this.white = white
         this.value = value

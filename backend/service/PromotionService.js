@@ -17,6 +17,7 @@ export class PromotionService {
         if (index === -1) return piece
 
         const queen = new Queen(piece.position.x, piece.position.y, piece.white)
+        queen.id = piece.id
         queen.hasMoved = true
         pieces[index] = queen
         return queen

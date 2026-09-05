@@ -7,7 +7,6 @@ export class DragGesture {
     selectedPiece = null
     dragLines = null
     captureTarget = null
-    lastMovedPiece = null
 
     select(piece, dragLines) {
         this.selectedPiece = piece
@@ -18,11 +17,6 @@ export class DragGesture {
     updateDragPosition(position, captureTarget) {
         this.selectedPiece.dragPosition = position
         this.captureTarget = captureTarget
-    }
-
-    recordMove(piece) {
-        this.selectedPiece = piece
-        this.lastMovedPiece = piece
     }
 
     clear() {
@@ -41,11 +35,14 @@ export class DragGesture {
         return new Circle(this.selectedPiece.position, DRAG_DEAD_ZONE).containsPoint(point)
     }
 
+    // lastMovedPiece isn't part of a gesture's own state - a move only
+    // takes effect once the server's update comes back over the wire, so
+    // callers (see web/main.js) merge that in separately from what they
+    // last heard from the server, not from anything tracked here.
     snapshot() {
         return {
             selectedPiece: this.selectedPiece,
-            captureTarget: this.captureTarget,
-            lastMovedPiece: this.lastMovedPiece
+            captureTarget: this.captureTarget
         }
     }
 }
