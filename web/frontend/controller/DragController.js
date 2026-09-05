@@ -37,24 +37,37 @@ export class DragController {
         if (!this.gesture.isActive()) return
 
         const destination = this.dragMoveService.destinationFor(this.gesture.dragLines, point)
+        const committing = destination
+            && !this.gesture.withinDeadZone(point, shiftHeld)
+            && !this.gesture.withinDeadZone(destination, shiftHeld)
 
         // The server is authoritative now - this just asks; the actual
         // move (and the "last moved" highlight) only takes effect once its
         // update comes back over the wire, so there's no piece to record
         // here the way commitMove() used to hand one back synchronously.
-        if (destination
-            && !this.gesture.withinDeadZone(point, shiftHeld)
-            && !this.gesture.withinDeadZone(destination, shiftHeld)) {
+        // release() (rather than clear()) is what keeps the piece pinned at
+        // `destination` in the meantime instead of snapping back and forth.
+        if (committing) {
+            this.gesture.selectedPiece.dragPosition = destination
             this.onCommitAttempt(this.gesture.selectedPiece.id, destination)
+            this.gesture.release()
+        } else {
+            this.gesture.clear()
         }
-
-        this.gesture.clear()
         this.notify()
     }
 
     cancel() {
         if (!this.gesture.isActive()) return
         this.gesture.clear()
+        this.notify()
+    }
+
+    // Called when a commit made via end() comes back REJECTED - drops the
+    // optimistic position it left pinned and re-renders the piece at its
+    // real spot.
+    revertLastAttempt() {
+        this.gesture.revertPending()
         this.notify()
     }
 

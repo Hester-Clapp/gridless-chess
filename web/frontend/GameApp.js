@@ -29,7 +29,10 @@ export class GameApp {
 
         this.client.onInit(payload => this.screenController.applyInit(payload))
         this.client.onUpdate(payload => this.screenController.applyUpdate(payload))
-        this.client.onRejected(({ reason }) => console.warn("Move rejected:", reason))
+        this.client.onRejected(({ reason }) => {
+            console.warn("Move rejected:", reason)
+            this.screenController.applyRejectedMove()
+        })
     }
 
     // The finished match's server-side MatchServer.handleClose() is a no-op

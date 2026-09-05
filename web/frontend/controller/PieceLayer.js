@@ -53,6 +53,12 @@ export class PieceLayer {
             const token = this.getOrCreateToken(piece)
             this.positionToken(token, piece, board, flipped)
             this.highlightToken(token, piece, { captureTarget, checkStatus, inCheck, lastMovedPiece, selectedPiece })
+            // The piece currently under the pointer must track it exactly,
+            // with no easing - see the .piece.dragging rule in index.html.
+            // Every other piece (including one whose drop is still waiting
+            // on the server, see DragGesture.release()) gets the transition,
+            // which is what makes a confirmed move glide into place.
+            token.el.classList.toggle("dragging", piece === selectedPiece)
         }
 
         for (const [id, token] of this.tokens) {

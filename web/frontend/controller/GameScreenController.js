@@ -38,6 +38,7 @@ export class GameScreenController {
         // Built once by initScreen(), on the connection's first snapshot -
         // torn down and rebuilt only on reset(), never per turn.
         this.dragMoveService = null
+        this.dragController = null
         this.pointerInputBinder = null
         this.pieceLayer = null
     }
@@ -66,6 +67,7 @@ export class GameScreenController {
         this.pointerInputBinder?.destroy()
         this.pointerInputBinder = null
         this.dragMoveService = null
+        this.dragController = null
         this.pieceLayer?.destroy()
         this.pieceLayer = null
     }
@@ -80,6 +82,13 @@ export class GameScreenController {
         this.refreshScreen({ board, game, movedPieceId, reason })
     }
 
+    // The move a drag just committed came back REJECTED rather than as an
+    // update - no fresh board is coming to naturally retire the optimistic
+    // drop position DragController.end() pinned, so undo it by hand.
+    applyRejectedMove() {
+        this.dragController?.revertLastAttempt()
+    }
+
     // Builds the parts of the graph that only need to exist once per
     // connection: the drag-gesture wiring, and - inside it - the
     // PointerInputBinder's canvas/window listeners. Called once, from
@@ -88,12 +97,12 @@ export class GameScreenController {
         const coordinateMapper = new BoardCoordinateMapper(this.canvas, board) // board dimensions are fixed for the game, only piece positions change
 
         this.dragMoveService = new DragMoveService(piece => piece.white === this.amWhite)
-        const dragController = new DragController(
+        this.dragController = new DragController(
             this.dragMoveService,
             snapshot => this.renderSnapshot(snapshot),
             (pieceId, position) => this.onMove(pieceId, position)
         )
-        this.pointerInputBinder = new PointerInputBinder(this.canvas, coordinateMapper, dragController, this.isFlipped)
+        this.pointerInputBinder = new PointerInputBinder(this.canvas, coordinateMapper, this.dragController, this.isFlipped)
         this.pieceLayer = new PieceLayer(this.piecesContainer)
 
         this.refreshScreen({ board, game, movedPieceId })

@@ -44,9 +44,16 @@
             --outline-w: calc(var(--unit, 1px) * 2);
             outline: var(--outline-w) solid lightgrey;
             outline-offset: calc(var(--outline-w) / -2);
-            /* transition: left 400ms, top 400ms; */
+            transition: left 150ms ease, top 150ms ease;
         }
-        
+
+        /* While a piece is being actively dragged it must track the pointer
+           exactly - see PieceLayer, which toggles this on the piece the
+           current DragGesture has selected. */
+        .piece.dragging {
+            transition: none;
+        }
+
         .piece.hl-piece { outline-color: hsl(200, 75%, 48%); } /* cyan - piece being dragged / last moved */
         .piece.hl-capture { outline-color: hsl(355, 75%, 48%); } /* red - piece about to be captured / delivering check */
         .piece.hl-check { --outline-w: calc(var(--unit, 1px) * 4); }
