@@ -35,8 +35,9 @@ Deno.test("start() seats the first socket white and the second black", () => {
     assertEquals(transport.initCalls, [true, false])
 })
 
-Deno.test("handleMessage() rejects a move from the player whose colour isn't up", () => {
-    const transport = makeTransport()
+Deno.test("handleMessage() trusts the client: a move from the player whose colour isn't up is still applied and broadcast", () => {
+    const update = { type: MESSAGE.UPDATE, payload: { turn: false } }
+    const transport = makeTransport({ handleMoveResult: update })
     const server = new MatchServer(transport, makeGame({ whiteToMove: true }), () => {})
     const white = makeSocket()
     const black = makeSocket()
@@ -44,8 +45,8 @@ Deno.test("handleMessage() rejects a move from the player whose colour isn't up"
 
     black.emit("message", makeMessageEvent(MESSAGE.MAKE_MOVE, { pieceId: "p1", position: { x: 0, y: 0 } }))
 
-    assertEquals(transport.handleMoveCalls.length, 0)
-    assertEquals(black.sent.at(-1), { type: MESSAGE.REJECTED, payload: { reason: "not-your-turn" } })
+    assertEquals(transport.handleMoveCalls, [{ pieceId: "p1", position: { x: 0, y: 0 } }])
+    for (const socket of [white, black]) assertEquals(socket.sent.at(-1), update)
 })
 
 Deno.test("handleMessage() broadcasts an accepted move to both connections", () => {

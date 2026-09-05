@@ -6,6 +6,11 @@ import { BoardSerializer } from "../../web/shared/protocol/BoardSerializer.js"
 // calls GameSession exactly as it's always been called - with domain
 // objects - then serializes the result into a message ready to send.
 // GameSession itself never imports a serializer or sees raw JSON.
+//
+// The unknown-piece check below is the only rejection left on this path -
+// it's decode safety (there's no Piece object to hand GameSession if the
+// id doesn't resolve), not a legality check. GameSession itself now trusts
+// and applies whatever move it's given - see its own comment.
 export class GameSessionTransport {
     constructor(gameSession, board) {
         this.gameSession = gameSession
@@ -21,8 +26,6 @@ export class GameSessionTransport {
         if (!piece) return { type: MESSAGE.REJECTED, payload: { reason: "unknown-piece" } }
 
         const result = this.gameSession.makeMove({ piece, position })
-        if (result.rejected) return { type: MESSAGE.REJECTED, payload: { reason: result.reason } }
-
         return { type: MESSAGE.UPDATE, payload: { ...this.serializeSnapshot(result), movedPieceId: result.movedPieceId, reason: null } }
     }
 

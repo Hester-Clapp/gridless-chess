@@ -8,12 +8,11 @@ Board state
 Whose turn it is
 Score
 Sets up the board initially
-Applies incoming moves
+Applies incoming moves as sent, untrusted (client-authoritative: the
+server no longer validates whose turn it is or whether a move is legal -
+it just applies whatever the client says and relays it to the other player)
 Captures pieces
 Manages promotion
-Validates:
-- is it your turn
-- is the move legal
 
 ### Client to server
 Make move:

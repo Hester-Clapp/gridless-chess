@@ -58,20 +58,6 @@ Deno.test("handleMove() resolves the piece by id and delegates to GameSession.ma
     assertEquals(message.payload.turn, false)
 })
 
-Deno.test("handleMove() turns a rejected GameSession result into a rejected message", () => {
-    const board = new Board()
-    const pawn = new Pawn(100, 100, true)
-    board.addPiece(pawn)
-    const gameSession = makeGameSession({
-        makeMoveResult: { boardState: board, turn: true, winner: null, rejected: true, reason: "illegal-move" },
-    })
-    const transport = new GameSessionTransport(gameSession, board)
-
-    const message = transport.handleMove({ pieceId: pawn.id, position: { x: 5, y: 5 } })
-
-    assertEquals(message, { type: MESSAGE.REJECTED, payload: { reason: "illegal-move" } })
-})
-
 Deno.test("buildForcedWin() wraps GameSession's current snapshot with a null movedPieceId and the given reason", () => {
     const board = new Board()
     const pawn = new Pawn(100, 100, true)

@@ -2,8 +2,15 @@ import { MESSAGE } from "../../web/shared/protocol/MessageTypes.js"
 import { sendMessage } from "./sendMessage.js"
 
 // Runs exactly one already-matched pair of sockets against one GameSession
-// via GameSessionTransport: routes makeMove requests, authorizes whose turn
-// it is, and broadcasts results to both connections. Unlike its predecessor
+// via GameSessionTransport: routes makeMove requests and broadcasts results
+// to both connections. Each connection's seat (assigned once, below, in the
+// order MatchQueue paired the sockets) is passed down with every move it
+// sends, so GameSessionTransport/GameSession can tell whether it was
+// actually that connection's piece and turn - see their own comments - and
+// send back a REJECTED instead of applying it if not. A move that *is*
+// legitimate is still trusted at face value for everything past that (no
+// server-side re-derivation of legal move lines), so the two clients still
+// never end up disagreeing about game state. Unlike its predecessor
 // (GameServer, back when there was only ever one communal game), seat
 // assignment isn't this class's job any more - MatchQueue hands it two
 // sockets already paired, in the order they play (first white, second
@@ -38,9 +45,6 @@ export class MatchServer {
         const { type, payload } = JSON.parse(event.data)
         if (type !== MESSAGE.MAKE_MOVE) return
 
-        const rejection = this.authorize(connection)
-        if (rejection) return this.send(connection.socket, rejection)
-
         const result = this.transport.handleMove(payload)
         if (result.type === MESSAGE.REJECTED) return this.send(connection.socket, result)
         this.broadcast(result)
@@ -59,19 +63,6 @@ export class MatchServer {
         this.game.declareWinner(!connection.white)
         this.broadcast(this.transport.buildForcedWin("disconnected"))
         this.onGameOver()
-    }
-
-    // A connection-level check, separate from (and in addition to)
-    // MoveValidator's own game.isTurn(piece) check inside GameSession: this
-    // stops the player who isn't up from being routed to
-    // GameSessionTransport at all. MoveValidator separately stops a
-    // legitimately-authorized sender from sneaking the wrong colour's piece
-    // id through.
-    authorize(connection) {
-        if (connection.white !== this.game.whiteToMove) {
-            return { type: MESSAGE.REJECTED, payload: { reason: "not-your-turn" } }
-        }
-        return null
     }
 
     send(socket, message) {

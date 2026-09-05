@@ -3,11 +3,18 @@
 // Its public shape (init / makeMove / snapshot) is the actual network
 // protocol from your plan; only its internals change once a real
 // transport exists.
+//
+// Client-authoritative: makeMove no longer checks whose turn it is or
+// whether `position` actually lies on a legal move line for `piece` - it
+// trusts the caller completely and commits exactly the move it was given.
+// That trust is what lets this stay desync-free (the server never
+// disagrees with the client about what happened), at the cost of a
+// misbehaving client being able to move the wrong piece, out of turn, or
+// anywhere on the board.
 export class GameSession {
-    constructor(game, board, moveValidator, moveExecutionService) {
+    constructor(game, board, moveExecutionService) {
         this.game = game
         this.board = board
-        this.moveValidator = moveValidator
         this.moveExecutionService = moveExecutionService
     }
 
@@ -16,13 +23,7 @@ export class GameSession {
     }
 
     makeMove({ piece, position }) {
-        const validation = this.moveValidator.validate(this.game, piece, position)
-        if (!validation.legal) return { ...this.snapshot(), rejected: true, reason: validation.reason }
-
-        // Commit to the validator's snapped position, not whatever the
-        // caller supplied - once this crosses a real network boundary the
-        // server needs to stay authoritative about the exact destination.
-        const resultingPiece = this.moveExecutionService.commitMove(this.game, this.board, piece, validation.position)
+        const resultingPiece = this.moveExecutionService.commitMove(this.game, this.board, piece, position)
         return { ...this.snapshot(), movedPieceId: resultingPiece.id }
     }
 

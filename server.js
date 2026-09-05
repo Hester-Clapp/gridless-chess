@@ -6,7 +6,6 @@ import { BoardSetupService } from "./backend/service/BoardSetupService.js";
 import { CaptureService } from "./web/shared/service/CaptureService.js";
 import { PromotionService } from "./backend/service/PromotionService.js";
 import { MoveExecutionService } from "./backend/service/MoveExecutionService.js";
-import { MoveValidator } from "./backend/service/MoveValidator.js";
 import { GameSession } from "./backend/interface/GameSession.js";
 import { GameSessionTransport } from "./backend/transport/GameSessionTransport.js";
 import { MatchQueue } from "./backend/interface/MatchQueue.js";
@@ -28,7 +27,6 @@ function buildGameSession() {
     const gameSession = new GameSession(
         game,
         board,
-        new MoveValidator(moveCalculator),
         new MoveExecutionService(moveCalculator, new CaptureService(moveCalculator), new PromotionService())
     );
     return { transport: new GameSessionTransport(gameSession, board), game };

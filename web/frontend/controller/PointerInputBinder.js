@@ -5,10 +5,26 @@ export class PointerInputBinder {
         this.gesture = gesture
         this.isFlipped = isFlipped
 
-        canvas.addEventListener("pointerdown", e => this.onDown(e))
-        window.addEventListener("pointermove", e => this.onMove(e))
-        window.addEventListener("pointerup", e => this.onUp(e))
-        window.addEventListener("pointercancel", () => this.gesture.cancel())
+        this.handleDown = e => this.onDown(e)
+        this.handleMove = e => this.onMove(e)
+        this.handleUp = e => this.onUp(e)
+        this.handleCancel = () => this.gesture.cancel()
+
+        canvas.addEventListener("pointerdown", this.handleDown)
+        window.addEventListener("pointermove", this.handleMove)
+        window.addEventListener("pointerup", this.handleUp)
+        window.addEventListener("pointercancel", this.handleCancel)
+    }
+
+    // buildScreen() rebuilds the whole graph - including a fresh
+    // PointerInputBinder - on every snapshot, but the canvas itself persists
+    // across the connection. Without this, each rebuild's listeners would
+    // stack on top of the previous ones instead of replacing them.
+    destroy() {
+        this.canvas.removeEventListener("pointerdown", this.handleDown)
+        window.removeEventListener("pointermove", this.handleMove)
+        window.removeEventListener("pointerup", this.handleUp)
+        window.removeEventListener("pointercancel", this.handleCancel)
     }
 
     onDown(event) {
