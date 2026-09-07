@@ -16,10 +16,10 @@ export class PointerInputBinder {
         window.addEventListener("pointercancel", this.handleCancel)
     }
 
-    // buildScreen() rebuilds the whole graph - including a fresh
-    // PointerInputBinder - on every snapshot, but the canvas itself persists
-    // across the connection. Without this, each rebuild's listeners would
-    // stack on top of the previous ones instead of replacing them.
+    // Each connection builds its own PointerInputBinder (see
+    // GameScreenController.startMatch), but the canvas itself persists across
+    // all of them. Without this, a new connection's listeners would stack on
+    // top of the previous one's instead of replacing them.
     destroy() {
         this.canvas.removeEventListener("pointerdown", this.handleDown)
         window.removeEventListener("pointermove", this.handleMove)

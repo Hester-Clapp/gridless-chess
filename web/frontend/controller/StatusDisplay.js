@@ -8,7 +8,7 @@ export class StatusDisplay {
         this.element = element
     }
 
-    // `checkStatus` is whatever CaptureService.getCheckStatus() returned
+    // `checkStatus` is whatever CheckService.getCheckStatus() returned
     // for the player currently on the move. Ignored once the game is over,
     // since "in check" is meaningless after a king's already been taken.
     // `reason` is the wire UPDATE's forfeit marker ("disconnected") or null

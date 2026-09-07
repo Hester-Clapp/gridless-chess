@@ -23,6 +23,15 @@ export class Board {
         collection.push(piece)
     }
 
+    // Takes a piece off the board, whether it was there or not. Deciding
+    // that it should come off - that a move captured it - belongs to
+    // whoever commits the move; see MoveExecutionService.
+    removePiece(piece) {
+        const collection = piece.white ? this.pieces.white : this.pieces.black
+        const index = collection.indexOf(piece)
+        if (index !== -1) collection.splice(index, 1)
+    }
+
     // All pieces, both colours, for callers like the Renderer that don't
     // care about ownership.
     getAllPieces() {

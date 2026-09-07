@@ -54,3 +54,26 @@ Deno.test("getPieceById() returns undefined when no piece matches", () => {
 
     assertEquals(board.getPieceById("nope"), undefined)
 })
+
+Deno.test("removePiece() takes the piece off its own colour's collection", () => {
+    const board = new Board()
+    const white = { ...makePiece(100, 100), white: true }
+    const black = { ...makePiece(200, 200), white: false }
+    board.addPiece(white)
+    board.addPiece(black)
+
+    board.removePiece(black)
+
+    assertEquals(board.pieces.black, [])
+    assertEquals(board.pieces.white, [white])
+})
+
+Deno.test("removePiece() is a no-op for a piece that isn't on the board", () => {
+    const board = new Board()
+    const white = { ...makePiece(100, 100), white: true }
+    board.addPiece(white)
+
+    board.removePiece({ ...makePiece(300, 300), white: true })
+
+    assertEquals(board.pieces.white, [white])
+})

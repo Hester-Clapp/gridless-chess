@@ -1,4 +1,4 @@
-import { MESSAGE } from "../../web/shared/protocol/MessageTypes.js"
+import { MESSAGE } from "../../web/shared/interface/MessageTypes.js"
 import { sendMessage } from "./sendMessage.js"
 
 // Runs exactly one already-matched pair of sockets against one GameSession
@@ -10,20 +10,20 @@ import { sendMessage } from "./sendMessage.js"
 // send back a REJECTED instead of applying it if not. A move that *is*
 // legitimate is still trusted at face value for everything past that (no
 // server-side re-derivation of legal move lines), so the two clients still
-// never end up disagreeing about game state. Unlike its predecessor
-// (GameServer, back when there was only ever one communal game), seat
-// assignment isn't this class's job any more - MatchQueue hands it two
-// sockets already paired, in the order they play (first white, second
-// black). This class also decides when its match is over - naturally (a
-// move produces a winner) or by forfeit (one side disconnects first) - and
-// reports that via onGameOver so MatchRegistry can retire it. It never
-// closes a socket itself: the final winning message still has to reach
-// whoever's left.
+// never end up disagreeing about game state. Seat assignment isn't this
+// class's job either - MatchQueue hands it two sockets already paired, in
+// the order they play (first white, second black).
+//
+// Every question about the game itself - is it over, and does this
+// disconnect end it - goes through the transport to GameSession; this class
+// holds no Game or Board of its own. It reports an ending via onGameOver
+// (wired by MatchRegistry) so the match can be retired, but never closes a
+// socket itself: the final winning message still has to reach whoever's
+// left.
 export class MatchServer {
-    constructor(gameSessionTransport, game, onGameOver) {
+    constructor(gameSessionTransport) {
         this.transport = gameSessionTransport
-        this.game = game
-        this.onGameOver = onGameOver
+        this.onGameOver = () => {} // replaced by MatchRegistry once it's tracking this match
         this.connections = new Set()
     }
 
@@ -48,20 +48,22 @@ export class MatchServer {
         const result = this.transport.handleMove(payload)
         if (result.type === MESSAGE.REJECTED) return this.send(connection.socket, result)
         this.broadcast(result)
-        if (this.game.isOver) this.onGameOver()
+        if (this.transport.isGameOver()) this.onGameOver()
     }
 
     // A disconnect only forfeits the match if it happens before a winner was
     // already decided - otherwise this is just the losing or winning side's
-    // tab closing after the fact, which isn't a second ending. Deleting the
-    // closed connection before broadcasting is what makes the survivor the
-    // only recipient, with no special-casing needed.
+    // tab closing after the fact, which isn't a second ending. That's
+    // GameSession's call, reported back as a null forfeit message. Deleting
+    // the closed connection before broadcasting is what makes the survivor
+    // the only recipient, with no special-casing needed.
     handleClose(connection) {
         this.connections.delete(connection)
-        if (this.game.isOver) return
 
-        this.game.declareWinner(!connection.white)
-        this.broadcast(this.transport.buildForcedWin("disconnected"))
+        const forfeit = this.transport.buildForfeit(connection.white)
+        if (!forfeit) return
+
+        this.broadcast(forfeit)
         this.onGameOver()
     }
 

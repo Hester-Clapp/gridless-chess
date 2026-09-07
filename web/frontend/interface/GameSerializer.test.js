@@ -1,6 +1,6 @@
 import { assertEquals, assertStrictEquals } from "@std/assert"
-import { Board } from "../entity/Board.js"
-import { Game } from "../entity/Game.js"
+import { Board } from "../../shared/entity/Board.js"
+import { Game } from "../../shared/entity/Game.js"
 import { GameSerializer } from "./GameSerializer.js"
 
 Deno.test("round-trips whiteToMove and winner", () => {

@@ -17,7 +17,7 @@ const ASSET_DIR = new URL("../../assets/", import.meta.url)
 // Built once per connection (see GameScreenController) and kept across
 // turns - each sync() call moves/restyles/removes the same elements by
 // piece id rather than rebuilding them, since Board/Piece are wholesale
-// replacements every turn (see GameScreenController) but a piece's id
+// replacements every turn (see GameStateService) but a piece's id
 // round-trips across the wire (see PieceSerializer) and so still identifies
 // "the same piece" from one snapshot to the next; a captured piece's id
 // simply stops appearing, and PromotionService keeps a pawn's id when it
@@ -129,7 +129,7 @@ export class PieceLayer {
         return `${piece.white ? "White" : "Black"} ${piece.type}`
     }
 
-    // Called from GameScreenController.reset() before a fresh initScreen()
+    // Called from GameScreenController.reset() before a fresh startMatch()
     // builds a new PieceLayer for the next connection - drops every element
     // and stops watching the (about to be reused) container's size.
     destroy() {

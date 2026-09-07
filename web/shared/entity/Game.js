@@ -8,7 +8,7 @@ export class Game {
 
     // Colour of the side that's won, or null while the match is still in
     // progress. Just a flag Game holds - deciding *when* someone's won
-    // (e.g. that capturing the king does it) is CaptureService's call, not
+    // (e.g. that capturing the king does it) is the server's call, not
     // this entity's.
     winner = null
 
@@ -34,7 +34,7 @@ export class Game {
     }
 
     // Ends the match in favour of `white`. Callers decide when that's
-    // warranted (see CaptureService.getWinner()) - Game just records it.
+    // warranted (see MoveExecutionService.getWinner()) - Game just records it.
     declareWinner(white) {
         this.winner = white
     }

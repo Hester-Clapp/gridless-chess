@@ -25,7 +25,7 @@ export class DragGesture {
     // dragPosition is left exactly where the pointer left it instead of
     // snapping back to the pre-drag spot for the moment until the real
     // update arrives. That update replaces the board/piece wholesale (see
-    // GameScreenController), which is what naturally retires pendingPiece -
+    // GameStateService), which is what naturally retires pendingPiece -
     // revertPending() only exists for the other outcome, a REJECTED reply,
     // where no update is coming and the optimistic position has to be
     // dropped by hand.
@@ -65,8 +65,9 @@ export class DragGesture {
 
     // lastMovedPiece isn't part of a gesture's own state - a move only
     // takes effect once the server's update comes back over the wire, so
-    // callers (see web/main.js) merge that in separately from what they
-    // last heard from the server, not from anything tracked here.
+    // callers (see GameScreenController.renderSnapshot) merge that in
+    // separately from what GameStateService last heard from the server, not
+    // from anything tracked here.
     snapshot() {
         return {
             selectedPiece: this.selectedPiece,

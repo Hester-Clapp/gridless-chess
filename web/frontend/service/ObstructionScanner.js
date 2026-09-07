@@ -1,7 +1,7 @@
-import { Line } from "../entity/geometry/Line.js"
-import { Circle } from "../entity/geometry/Circle.js"
-import { Vector } from "../entity/geometry/Vector.js"
-import { RADIUS } from "../entity/geometry/constants.js"
+import { Line } from "../../shared/entity/geometry/Line.js"
+import { Circle } from "../../shared/entity/geometry/Circle.js"
+import { Vector } from "../../shared/entity/geometry/Vector.js"
+import { RADIUS } from "../../shared/entity/geometry/constants.js"
 
 // Two pieces are in each other's way once their centres come within two
 // radii - the same distance at which one captures the other, so an

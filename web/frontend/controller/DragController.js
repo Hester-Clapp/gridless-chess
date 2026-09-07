@@ -2,19 +2,19 @@ import { DragGesture } from "../../shared/entity/DragGesture.js"
 
 // Wires pointer-driven drag events onto a DragGesture. Every game-rule
 // decision - what can be selected, where a drag resolves, whether it lands
-// on a capture - belongs to DragMoveService; this class only sequences
+// on a capture - belongs to GameStateService; this class only sequences
 // those calls against the gesture's state and reports the result.
 export class DragController {
-    constructor(dragMoveService, onChange, onCommitAttempt) {
-        this.dragMoveService = dragMoveService
+    constructor(gameState, onChange, onCommitAttempt) {
+        this.gameState = gameState
         this.onChange = onChange
         this.onCommitAttempt = onCommitAttempt
         this.gesture = new DragGesture()
     }
 
     start(point) {
-        const selected = this.dragMoveService.pieceSelectableAt(point, this.gesture.selectedPiece)
-        const dragLines = this.dragMoveService.dragLinesFor(selected)
+        const selected = this.gameState.pieceSelectableAt(point, this.gesture.selectedPiece)
+        const dragLines = this.gameState.dragLinesFor(selected)
 
         this.gesture.select(selected, dragLines)
         this.notify()
@@ -25,9 +25,9 @@ export class DragController {
 
         const destination = this.gesture.withinDeadZone(point, shiftHeld)
             ? null
-            : this.dragMoveService.destinationFor(this.gesture.dragLines, point)
+            : this.gameState.destinationFor(this.gesture.dragLines, point)
 
-        const captureTarget = this.dragMoveService.captureTargetAt(this.gesture.selectedPiece, destination)
+        const captureTarget = this.gameState.captureTargetAt(this.gesture.selectedPiece, destination)
 
         this.gesture.updateDragPosition(destination, captureTarget)
         this.notify()
@@ -36,20 +36,23 @@ export class DragController {
     end(point, shiftHeld) {
         if (!this.gesture.isActive()) return
 
-        const destination = this.dragMoveService.destinationFor(this.gesture.dragLines, point)
+        const destination = this.gameState.destinationFor(this.gesture.dragLines, point)
         const committing = destination
             && !this.gesture.withinDeadZone(point, shiftHeld)
             && !this.gesture.withinDeadZone(destination, shiftHeld)
 
-        // The server is authoritative now - this just asks; the actual
-        // move (and the "last moved" highlight) only takes effect once its
-        // update comes back over the wire, so there's no piece to record
-        // here the way commitMove() used to hand one back synchronously.
-        // release() (rather than clear()) is what keeps the piece pinned at
-        // `destination` in the meantime instead of snapping back and forth.
+        // The move is decided here but applied by the server - this just
+        // asks; the actual move (and the "last moved" highlight) only takes
+        // effect once its update comes back over the wire, so there's no
+        // piece to record here. Built before release(), while the piece is
+        // still on its starting square, since that's what tells a castle
+        // from an ordinary king move. release() (rather than clear()) is
+        // what keeps the piece pinned at `destination` in the meantime
+        // instead of snapping back and forth.
         if (committing) {
+            const move = this.gameState.buildMove(this.gesture.selectedPiece, destination)
             this.gesture.selectedPiece.dragPosition = destination
-            this.onCommitAttempt(this.gesture.selectedPiece.id, destination)
+            this.onCommitAttempt(move)
             this.gesture.release()
         } else {
             this.gesture.clear()

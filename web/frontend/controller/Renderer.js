@@ -6,14 +6,14 @@ const MOVE_LINE_COLOUR = "hsla(135, 75%, 48%, 0.75)" // green - legal move path
 // canvas pixels. The canvas still exists purely to show a selected piece's
 // possible moves.
 export class Renderer {
-    moveService
+    gameState
 
-    constructor(moveService) {
-        this.moveService = moveService
+    constructor(gameState) {
+        this.gameState = gameState
     }
 
     drawMoves(board, piece, ctx, flipped = false) {
-        const moves = this.moveService.calculateMoves(piece)
+        const moves = this.gameState.movesFor(piece)
 
         ctx.save()
         ctx.strokeStyle = MOVE_LINE_COLOUR

@@ -1,5 +1,5 @@
-import { RADIUS } from "../entity/geometry/constants.js"
-import { Rectangle } from "../entity/geometry/Rectangle.js"
+import { RADIUS } from "../../shared/entity/geometry/constants.js"
+import { Rectangle } from "../../shared/entity/geometry/Rectangle.js"
 import { ObstructionScanner } from "./ObstructionScanner.js"
 import { CastlingService } from "./CastlingService.js"
 
@@ -22,6 +22,10 @@ export class MoveCalculator {
     playableArea
     scanner = new ObstructionScanner()
     castlingService
+    // One board's worth of answers. A snapshot's board is never mutated -
+    // each turn arrives as a wholesale replacement, with a fresh calculator
+    // built for it (see GameStateService) - so nothing here can go stale
+    // while it lives.
     moveCache = new Map()
 
     constructor(board, castlingService = new CastlingService()) {
@@ -61,14 +65,6 @@ export class MoveCalculator {
             }
         }
         return closest
-    }
-
-    // The board (and any capture it caused) can change what's legal for
-    // every piece, not just the one that moved, so callers drop the whole
-    // cache after a move rather than trying to reason about which pieces
-    // are affected.
-    invalidateCache() {
-        this.moveCache.clear()
     }
 
     // The stretches of one option's line the piece can actually stop on -

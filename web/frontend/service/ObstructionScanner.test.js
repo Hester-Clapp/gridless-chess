@@ -1,7 +1,7 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert"
-import { Line } from "../entity/geometry/Line.js"
-import { Circle } from "../entity/geometry/Circle.js"
-import { RADIUS } from "../entity/geometry/constants.js"
+import { Line } from "../../shared/entity/geometry/Line.js"
+import { Circle } from "../../shared/entity/geometry/Circle.js"
+import { RADIUS } from "../../shared/entity/geometry/constants.js"
 import { ObstructionScanner } from "./ObstructionScanner.js"
 
 // findIntersections()/scanObstructions() take plain Lines and

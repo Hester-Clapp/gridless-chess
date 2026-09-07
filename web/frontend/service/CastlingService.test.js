@@ -1,7 +1,7 @@
 import { assertAlmostEquals, assertEquals, assertStrictEquals } from "@std/assert"
-import { Board } from "../entity/Board.js"
-import { King, Rook, Bishop, Knight } from "../entity/Piece.js"
-import { SPACE, HALF_SPACE } from "../entity/geometry/constants.js"
+import { Board } from "../../shared/entity/Board.js"
+import { King, Rook, Bishop, Knight } from "../../shared/entity/Piece.js"
+import { SPACE, HALF_SPACE } from "../../shared/entity/geometry/constants.js"
 import { CastlingService } from "./CastlingService.js"
 
 // The standard opening back rank, laid out exactly rather than with the
@@ -39,8 +39,8 @@ Deno.test("castlingOptions() gives an unmoved king one option toward each unmove
     assertEquals(queenSide.vector.x, -1)
     assertEquals(kingSide.vector.x, 1)
     // A stretch centred two spaces out, never a slide from where it stands.
-    assertAlmostEquals(queenSide.minDistance, 180)
-    assertAlmostEquals(queenSide.maxDistance, 220)
+    assertAlmostEquals(queenSide.minDistance, 199)
+    assertAlmostEquals(queenSide.maxDistance, 201)
 })
 
 Deno.test("castlingOptions() gives nothing to a king that has already moved", () => {
@@ -105,78 +105,82 @@ Deno.test("castlingOptions() ignores an enemy piece's own rook when looking for 
 })
 
 // ---------------------------------------------------------------------------
-// resolveCastle() - the rook's half of the move
+// castleMoveFor() - the rook's half of the move
 // ---------------------------------------------------------------------------
 
-Deno.test("resolveCastle() moves the queen-side rook three whole spaces, to the other side of the king", () => {
+Deno.test("castleMoveFor() sends the queen-side rook three whole spaces, to the other side of the king", () => {
     const { board, king, queenSideRook } = setUp()
 
-    const rook = new CastlingService().resolveCastle(board, king, left(king))
+    const castle = new CastlingService().castleMoveFor(board, king, left(king))
 
-    assertStrictEquals(rook, queenSideRook)
-    assertAlmostEquals(rook.position.x, square(0) + 3 * SPACE)
-    assertAlmostEquals(rook.position.y, king.position.y)
-    assertEquals(rook.hasMoved, true)
+    assertStrictEquals(castle.piece, queenSideRook)
+    assertAlmostEquals(castle.position.x, square(0) + 3 * SPACE)
+    assertAlmostEquals(castle.position.y, king.position.y)
 })
 
-Deno.test("resolveCastle() moves the king-side rook two whole spaces, to the other side of the king", () => {
+Deno.test("castleMoveFor() sends the king-side rook two whole spaces, to the other side of the king", () => {
     const { board, king, kingSideRook } = setUp()
 
-    const rook = new CastlingService().resolveCastle(board, king, right(king))
+    const castle = new CastlingService().castleMoveFor(board, king, right(king))
 
-    assertStrictEquals(rook, kingSideRook)
-    assertAlmostEquals(rook.position.x, square(7) - 2 * SPACE)
+    assertStrictEquals(castle.piece, kingSideRook)
+    assertAlmostEquals(castle.position.x, square(7) - 2 * SPACE)
 })
 
-Deno.test("resolveCastle() leaves the king itself alone - its caller commits that move", () => {
-    const { board, king } = setUp()
-    const before = { ...king.position }
+// The server is the only thing that moves a piece; this just reports what
+// should move where, so nothing on this board may shift as a side effect.
+Deno.test("castleMoveFor() moves nothing itself - neither the king nor the rook", () => {
+    const { board, king, queenSideRook } = setUp()
+    const kingBefore = { ...king.position }
+    const rookBefore = { ...queenSideRook.position }
 
-    new CastlingService().resolveCastle(board, king, left(king))
+    new CastlingService().castleMoveFor(board, king, left(king))
 
-    assertEquals(king.position, before)
+    assertEquals(king.position, kingBefore)
+    assertEquals(queenSideRook.position, rookBefore)
+    assertEquals(queenSideRook.hasMoved, false)
 })
 
-Deno.test("resolveCastle() does nothing for an ordinary one-space king move", () => {
+Deno.test("castleMoveFor() is null for an ordinary one-space king move", () => {
     const { board, king, queenSideRook } = setUp()
 
-    const rook = new CastlingService().resolveCastle(board, king, { x: king.position.x - SPACE, y: king.position.y })
+    const castle = new CastlingService().castleMoveFor(board, king, { x: king.position.x - SPACE, y: king.position.y })
 
-    assertEquals(rook, null)
+    assertEquals(castle, null)
     assertAlmostEquals(queenSideRook.position.x, square(0))
 })
 
-Deno.test("resolveCastle() does nothing for a king move between one and two spaces", () => {
+Deno.test("castleMoveFor() is null for a king move between one and two spaces", () => {
     const { board, king } = setUp()
 
-    assertEquals(new CastlingService().resolveCastle(board, king, { x: king.position.x - 1.5 * SPACE, y: king.position.y }), null)
+    assertEquals(new CastlingService().castleMoveFor(board, king, { x: king.position.x - 1.5 * SPACE, y: king.position.y }), null)
 })
 
-Deno.test("resolveCastle() still castles a two-space move that's slightly off", () => {
+Deno.test("castleMoveFor() still castles a two-space move that's slightly off", () => {
     const { board, king, queenSideRook } = setUp()
 
     // Within tolerance both along the rank and across it - a drag never
     // lands on an exact number.
-    const rook = new CastlingService().resolveCastle(board, king, { x: king.position.x - 1.9 * SPACE, y: king.position.y + 5 })
+    const castle = new CastlingService().castleMoveFor(board, king, { x: king.position.x - 2 * SPACE + 0.5, y: king.position.y + 0.5 })
 
-    assertStrictEquals(rook, queenSideRook)
+    assertStrictEquals(castle.piece, queenSideRook)
 })
 
-Deno.test("resolveCastle() does nothing when the king has already moved", () => {
+Deno.test("castleMoveFor() is null when the king has already moved", () => {
     const { board, king } = setUp()
     king.hasMoved = true
 
-    assertEquals(new CastlingService().resolveCastle(board, king, left(king)), null)
+    assertEquals(new CastlingService().castleMoveFor(board, king, left(king)), null)
 })
 
-Deno.test("resolveCastle() does nothing when the path the king would cross is blocked", () => {
+Deno.test("castleMoveFor() is null when the path the king would cross is blocked", () => {
     const { board, king } = setUp({ extras: [[Bishop, 3]] })
 
-    assertEquals(new CastlingService().resolveCastle(board, king, left(king)), null)
+    assertEquals(new CastlingService().castleMoveFor(board, king, left(king)), null)
 })
 
-Deno.test("resolveCastle() does nothing for a piece that isn't a king", () => {
+Deno.test("castleMoveFor() is null for a piece that isn't a king", () => {
     const { board, queenSideRook } = setUp()
 
-    assertEquals(new CastlingService().resolveCastle(board, queenSideRook, right(queenSideRook)), null)
+    assertEquals(new CastlingService().castleMoveFor(board, queenSideRook, right(queenSideRook)), null)
 })

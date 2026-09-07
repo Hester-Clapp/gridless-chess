@@ -1,8 +1,8 @@
-import { Vector } from "../entity/geometry/Vector.js"
-import { Line } from "../entity/geometry/Line.js"
-import { Circle } from "../entity/geometry/Circle.js"
-import { SPACE, RADIUS } from "../entity/geometry/constants.js"
-import { MoveOption, CAPTURE } from "../entity/MoveOption.js"
+import { Vector } from "../../shared/entity/geometry/Vector.js"
+import { Line } from "../../shared/entity/geometry/Line.js"
+import { Circle } from "../../shared/entity/geometry/Circle.js"
+import { SPACE, RADIUS } from "../../shared/entity/geometry/constants.js"
+import { MoveOption, CAPTURE } from "../../shared/entity/MoveOption.js"
 
 // How far the king travels when it castles.
 const KING_TRAVEL = 2 * SPACE
@@ -25,7 +25,14 @@ const DIRECTIONS = [new Vector(-1, 0), new Vector(1, 0)]
 // Castling, both halves of it: the extra move it gives the king (asked for
 // by MoveCalculator, which has no idea castling exists beyond calling this)
 // and the rook move that has to happen alongside it (asked for by
-// MoveExecutionService when that king move is committed).
+// GameStateService when a drag commits to that king move).
+//
+// Castling is decided entirely here, on the client: the server is told which
+// rook moved where and simply applies it, exactly as it does the king's own
+// move, and never works any of this out for itself. That's why this service
+// reports the rook's move rather than performing it - by the time anything
+// is moved, the board this ran against has already been replaced by the
+// server's answer.
 //
 // The rule here: neither king nor rook may have moved, and the two spaces
 // the king crosses must be clear of everything except that rook. Whatever
@@ -40,47 +47,54 @@ export class CastlingService {
     // out, not a slide: the king may stop there or within a space of home,
     // but nowhere in between.
     castlingOptions(board, piece) {
-        if (piece.type !== "king" || piece.hasMoved) return []
+        return this.castleCandidates(board, piece).map(({ option }) => option)
+    }
+
+    // The rook move that goes with a king being committed to `destination` -
+    // which rook, and where it lands - or null when the move isn't a castle
+    // at all. Must be asked while the king is still on its starting square:
+    // which castle this is (if any) is decided by where the king started.
+    //
+    // Whether this drop is a castle is settled by asking the castle's own
+    // line whether the point lies on it, rather than by measuring how far
+    // the king travelled and comparing that against the same bounds the line
+    // was built from. Those bounds are exactly the ends of the stretch, so a
+    // drop on either end - which is where most castles land, the stretch
+    // being two units long - would sit precisely on the comparison's
+    // boundary, and floating-point rounding, not chess, would decide whether
+    // the rook came along.
+    castleMoveFor(board, king, destination) {
+        const candidate = this.castleCandidates(board, king)
+            .find(({ option }) => option.createLine(king.position).distanceTo(destination) < TOLERANCE)
+        if (!candidate) return null
+
+        const rook = candidate.rook
+        return { piece: rook, position: { x: rook.position.x + this.rookTravel(king, rook), y: rook.position.y } }
+    }
+
+    // Each castle this king can still play: the rook it would move, and the
+    // stretch of board the king may stop on to play it. One list, used both
+    // to offer the move and to recognise it once it's been made, so the two
+    // can never disagree about what counts as a castle.
+    //
+    // Each stretch is centred two spaces out and is a short stretch, not a
+    // slide: the king may stop there or within a space of home, but nowhere
+    // in between.
+    castleCandidates(board, king) {
+        if (king.type !== "king" || king.hasMoved) return []
 
         return DIRECTIONS
-            .map(direction => ({ direction, rook: this.rookFor(board, piece, direction) }))
+            .map(direction => ({ direction, rook: this.rookFor(board, king, direction) }))
             .filter(({ rook }) => rook)
             // The rook is left out of the sweep this option gets: it's the
             // one piece the king is allowed to end up alongside, and its own
             // square is close enough to the far edge of the tolerance to
             // otherwise trim the castle short of it.
-            .map(({ direction, rook }) =>
-                new MoveOption(direction, KING_TRAVEL - TOLERANCE, KING_TRAVEL + TOLERANCE, CAPTURE.FORBIDDEN, [rook]))
-    }
-
-    // Completes a castle the king has just been committed to - moving the
-    // rook to the other side of it - and reports which rook that was, or
-    // null when the move wasn't a castle at all. Must be called before the
-    // king itself is moved: which castle this is (if any) is decided by
-    // where the king started.
-    resolveCastle(board, king, destination) {
-        const direction = this.castleDirection(king, destination)
-        if (!direction) return null
-
-        const rook = this.rookFor(board, king, direction)
-        if (!rook) return null
-
-        rook.position = { x: rook.position.x + this.rookTravel(king, rook), y: rook.position.y }
-        rook.hasMoved = true
-        return rook
-    }
-
-    // Which way `destination` castles this king, or null if it's an ordinary
-    // move. Nothing else can reach two spaces out - an uncastled king's own
-    // move set stops at one - so the distance alone identifies it.
-    castleDirection(king, destination) {
-        if (king.type !== "king" || king.hasMoved) return null
-
-        const travel = Vector.between(king.position, destination)
-        if (Math.abs(travel.y) > TOLERANCE) return null
-        if (Math.abs(travel.x) < KING_TRAVEL - TOLERANCE || Math.abs(travel.x) > KING_TRAVEL + TOLERANCE) return null
-
-        return DIRECTIONS.find(direction => direction.x === Math.sign(travel.x)) ?? null
+            .map(({ direction, rook }) => ({
+                direction,
+                rook,
+                option: new MoveOption(direction, KING_TRAVEL - TOLERANCE, KING_TRAVEL + TOLERANCE, CAPTURE.FORBIDDEN, [rook]),
+            }))
     }
 
     // The rook this king would castle with in `direction`, or null if that

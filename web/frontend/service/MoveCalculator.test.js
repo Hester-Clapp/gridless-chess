@@ -1,10 +1,10 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert"
-import { Line } from "../entity/geometry/Line.js"
-import { Vector } from "../entity/geometry/Vector.js"
-import { RADIUS, SPACE, HALF_SPACE } from "../entity/geometry/constants.js"
-import { MoveOption, CAPTURE } from "../entity/MoveOption.js"
-import { Board } from "../entity/Board.js"
-import { King, Rook, Bishop } from "../entity/Piece.js"
+import { Line } from "../../shared/entity/geometry/Line.js"
+import { Vector } from "../../shared/entity/geometry/Vector.js"
+import { RADIUS, SPACE, HALF_SPACE } from "../../shared/entity/geometry/constants.js"
+import { MoveOption, CAPTURE } from "../../shared/entity/MoveOption.js"
+import { Board } from "../../shared/entity/Board.js"
+import { King, Rook, Bishop } from "../../shared/entity/Piece.js"
 import { MoveCalculator } from "./MoveCalculator.js"
 
 // MoveCalculator derives its playable area from board.width/board.height
@@ -458,8 +458,8 @@ Deno.test("calculateMoves() offers a king a separate two-space stretch toward ea
 
     const [ordinary, castle] = movesAlongRank(calculator, king, -1)
     assertAlmostEquals(ordinary.to.x, king.position.x - SPACE) // the usual one-space move
-    assertAlmostEquals(castle.from.x, king.position.x - 180) // and, past a gap, the castle
-    assertAlmostEquals(castle.to.x, king.position.x - 220)
+    assertAlmostEquals(castle.from.x, king.position.x - 199) // and, past a gap, the castle
+    assertAlmostEquals(castle.to.x, king.position.x - 201)
 })
 
 Deno.test("calculateMoves() doesn't let the rook a king is castling with trim the castle short", () => {
@@ -473,7 +473,7 @@ Deno.test("calculateMoves() doesn't let the rook a king is castling with trim th
     const calculator = new MoveCalculator(board)
 
     const [, castle] = movesAlongRank(calculator, king, 1)
-    assertAlmostEquals(castle.to.x, king.position.x + 220)
+    assertAlmostEquals(castle.to.x, king.position.x + 201)
 })
 
 Deno.test("calculateMoves() offers a king no castling stretch on a side something is standing in the way of", () => {
