@@ -1,11 +1,56 @@
 import { assertAlmostEquals, assertEquals } from "@std/assert"
 import { Line } from "../entity/geometry/Line.js"
 import { Circle } from "../entity/geometry/Circle.js"
+import { RADIUS } from "../entity/geometry/constants.js"
 import { ObstructionScanner } from "./ObstructionScanner.js"
 
-// ObstructionScanner takes plain Lines and { circle, friendly } obstructions -
-// no board or piece involved - so these tests build both directly rather
-// than going through MoveCalculator.
+// findIntersections()/scanObstructions() take plain Lines and
+// { circle, friendly } obstructions - no board or piece involved - so those
+// tests build both directly rather than going through MoveCalculator.
+// obstructionsNear(), which produces those obstructions in the first place,
+// is the one part that needs a board.
+
+const makeBoard = pieces => ({ getOtherPieces: piece => pieces.filter(other => other !== piece) })
+const makePiece = (x, y, white) => ({ position: { x, y }, white })
+
+Deno.test("obstructionsNear() keeps only the pieces a line could reach, nearest first", () => {
+    const near = makePiece(200, 0, true)
+    const far = makePiece(150, 0, true)
+    const outOfReach = makePiece(1000, 0, true) // past 500 + 2 * RADIUS
+    const scanner = new ObstructionScanner()
+    const piece = makePiece(0, 0, true)
+
+    const obstructions = scanner.obstructionsNear(makeBoard([near, far, outOfReach, piece]), piece, [new Line({ x: 0, y: 0 }, { x: 500, y: 0 })])
+
+    assertEquals(obstructions.length, 2)
+    assertEquals(obstructions[0].circle.centre, far.position)
+    assertEquals(obstructions[1].circle.centre, near.position)
+})
+
+Deno.test("obstructionsNear() marks each obstruction friendly or not by comparing colours, and sizes it to two piece radii", () => {
+    const scanner = new ObstructionScanner()
+    const piece = makePiece(0, 0, true)
+    const board = makeBoard([piece, makePiece(100, 0, true), makePiece(200, 0, false)])
+
+    const [friendly, enemy] = scanner.obstructionsNear(board, piece, [new Line({ x: 0, y: 0 }, { x: 500, y: 0 })])
+
+    assertEquals(friendly.friendly, true)
+    assertEquals(enemy.friendly, false)
+    assertEquals(friendly.circle.radius, RADIUS * 2)
+})
+
+Deno.test("obstructionsNear() measures reach to where a line really ends, not to any distance the move set names", () => {
+    // A (2, 1)-shaped jump of maxDistance 100 ends sqrt(5) * 100 = 223.6
+    // away, so a piece sitting on that landing square is within reach even
+    // though it's well past 100 + 2 * RADIUS.
+    const landingSquare = makePiece(200, 100, true)
+    const scanner = new ObstructionScanner()
+    const piece = makePiece(0, 0, true)
+
+    const obstructions = scanner.obstructionsNear(makeBoard([piece, landingSquare]), piece, [new Line({ x: 0, y: 0 }, { x: 200, y: 100 })])
+
+    assertEquals(obstructions.length, 1)
+})
 
 Deno.test("findIntersections() returns nothing for an obstruction the line never comes near", () => {
     const scanner = new ObstructionScanner()

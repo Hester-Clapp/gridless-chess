@@ -4,6 +4,7 @@ import { Game } from "./web/shared/entity/Game.js";
 import { MoveCalculator } from "./web/shared/service/MoveCalculator.js";
 import { BoardSetupService } from "./backend/service/BoardSetupService.js";
 import { CaptureService } from "./web/shared/service/CaptureService.js";
+import { CastlingService } from "./web/shared/service/CastlingService.js";
 import { PromotionService } from "./backend/service/PromotionService.js";
 import { MoveExecutionService } from "./backend/service/MoveExecutionService.js";
 import { GameSession } from "./backend/interface/GameSession.js";
@@ -23,11 +24,12 @@ function buildGameSession() {
     const board = new Board();
     new BoardSetupService().standardSetup(board);
     const game = new Game(board);
-    const moveCalculator = new MoveCalculator(board);
+    const castlingService = new CastlingService();
+    const moveCalculator = new MoveCalculator(board, castlingService);
     const gameSession = new GameSession(
         game,
         board,
-        new MoveExecutionService(moveCalculator, new CaptureService(moveCalculator), new PromotionService())
+        new MoveExecutionService(moveCalculator, new CaptureService(moveCalculator), new PromotionService(), castlingService)
     );
     return { transport: new GameSessionTransport(gameSession, board), game };
 }

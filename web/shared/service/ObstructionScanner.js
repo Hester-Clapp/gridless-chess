@@ -1,6 +1,40 @@
 import { Line } from "../entity/geometry/Line.js"
+import { Circle } from "../entity/geometry/Circle.js"
+import { Vector } from "../entity/geometry/Vector.js"
+import { RADIUS } from "../entity/geometry/constants.js"
+
+// Two pieces are in each other's way once their centres come within two
+// radii - the same distance at which one captures the other, so an
+// obstruction circle is both "can't pass through this" and "can take this".
+const OBSTRUCTION_RADIUS = RADIUS * 2
 
 export class ObstructionScanner {
+
+    // The pieces close enough to `lines` to be worth testing against them,
+    // as circles, nearest first. Reach is measured to where the lines
+    // actually end rather than from any distance a move set names: a
+    // direction vector needn't be a unit vector (a knight's (2, 1) is
+    // sqrt(5) long), so the two can differ by a lot.
+    obstructionsNear(board, piece, lines) {
+        const reach = Math.max(...lines.map(line => Vector.between(piece.position, line.to).length)) + OBSTRUCTION_RADIUS
+        const reachSquared = reach * reach
+
+        const toObstruction = other => {
+            const dx = other.position.x - piece.position.x
+            const dy = other.position.y - piece.position.y
+            return {
+                piece: other,
+                friendly: (piece.white === other.white),
+                circle: new Circle(other.position, OBSTRUCTION_RADIUS),
+                distanceSquared: dx * dx + dy * dy,
+            }
+        }
+
+        return board.getOtherPieces(piece)
+            .map(toObstruction)
+            .filter(({ distanceSquared }) => distanceSquared <= reachSquared)
+            .sort((a, b) => a.distanceSquared - b.distanceSquared)
+    }
 
     // Where a clamped line crosses each nearby obstruction's circle,
     // sorted from nearest to farthest along the line.

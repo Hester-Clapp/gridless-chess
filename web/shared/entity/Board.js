@@ -8,12 +8,10 @@ export class Board {
         white: [],
         black: []
     }
-    deviation
 
-    constructor(deviation = 0.08 * SPACE) {
+    constructor() {
         this.width = 8 * SPACE
         this.height = 8 * SPACE
-        this.deviation = deviation
     }
 
     // Adds an already-constructed piece to the board's collection for its

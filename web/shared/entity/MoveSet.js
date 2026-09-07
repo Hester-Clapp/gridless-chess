@@ -1,23 +1,23 @@
-import { Line } from "./geometry/Line.js"
+import { MoveOption } from "./MoveOption.js"
 
+// Everything a piece can do with the board empty: the directions it moves
+// in, as MoveOptions, plus whether it clears pieces in its way instead of
+// being stopped by them. What the board actually allows on top of that is
+// MoveCalculator's problem, not this one's.
 export class MoveSet {
-    minDistance
-    maxDistance
-    directions = []
+    options = []
     canJump
 
-    constructor(minDistance, maxDistance, directions, canJump = false) {
-        this.minDistance = minDistance
-        this.maxDistance = maxDistance
-        this.directions = [...directions]
+    constructor(options, canJump = false) {
+        this.options = [...options]
         this.canJump = canJump
     }
 
-    createLines(origin) {
-        return this.directions.map(vector => {
-            const from = vector.times(this.minDistance).translate(origin)
-            const to = vector.times(this.maxDistance).translate(origin)
-            return new Line(from, to)
-        })
+    // Every direction sharing one distance range and the ordinary capture
+    // rule - the shape of every piece except the pawn, whose advance and
+    // captures are different moves rather than one move in several
+    // directions.
+    static uniform(minDistance, maxDistance, vectors, canJump = false) {
+        return new MoveSet(vectors.map(vector => new MoveOption(vector, minDistance, maxDistance)), canJump)
     }
 }
